@@ -28,18 +28,17 @@ typedef struct sockaddr SOCKADDR;
         int protocol;           //Socket par défaut
     };
 
-    struct sockaddr_in
+    /*struct sockaddr_in
     {
         short      sin_family;
         unsigned short   sin_port;
         struct   in_addr   sin_addr;
         char   sin_zero[8];
-    };
+    };*/
 
 #pragma endregion
 
 #pragma region DEFINITIONS GLOBALES
-    SOCKET socket;
     int server;
     int portClient = 23;
     char buffer[1024];
@@ -47,14 +46,6 @@ typedef struct sockaddr SOCKADDR;
     Socket_Types tcp_Socket;
     Socket_Types unix_Socket;
     
-    //Paramétrage socket TCP (vers client)
-    tcp_Socket.domain = AF_INET;    //Socket TCP/IP
-    tcp_Socket.type = SOCK_STREAM;
-    tcp_Socket.protocol = 0;
-    //Paramétrage socket Unix (vers DB)
-    unix_Socket.domain = AF_UNIX;   //SOCKET Unix
-    unix_Socket.type = SOCK_STREAM;
-    unix_Socket.protocol = 0;
 #pragma endregion
 
 
@@ -94,8 +85,16 @@ SOCKET creationSocket(){
 
 int main()
 {
+    //Paramétrage socket TCP (vers client)
+    tcp_Socket.domain = AF_INET;    //Socket TCP/IP
+    tcp_Socket.type = SOCK_STREAM;
+    tcp_Socket.protocol = 0;
+    //Paramétrage socket Unix (vers DB)
+    unix_Socket.domain = AF_UNIX;   //SOCKET Unix
+    unix_Socket.type = SOCK_STREAM;
+    unix_Socket.protocol = 0;
     
-    socket = creationSocket();
+    SOCKET socket = creationSocket();
     while (listen(socket, 1) != SOCKET_ERROR) /* Boucle infinie. Exercice : améliorez ce code. */
     {
         //Réception de la requête du client
