@@ -34,9 +34,9 @@ typedef struct sockaddr SOCKADDR;
         char   sin_zero[8];
     };*/
 
-#pragma endregion
+#pragma endregion STRUCTURES
 
-#pragma region DEFINITIONS GLOBALES
+#pragma region DEFINITIONS_GLOBALES
     int server;
     int portClient = 23;
     char buffer[1024];
@@ -44,7 +44,7 @@ typedef struct sockaddr SOCKADDR;
     Socket_Types tcp_Socket;
     Socket_Types unix_Socket;
     
-#pragma endregion
+#pragma endregion DEFINITIONS_GLOBALES
 
 
 SOCKET creationSocket(){
@@ -93,8 +93,14 @@ int main()
     unix_Socket.protocol = 0;
 
     SOCKET socket = creationSocket();
+    SOCKADDR_IN csin;
+    SOCKET csock;
+    socklen_t crecsize = sizeof(csin);
+    
     while (listen(socket, 1) != SOCKET_ERROR) /* Boucle infinie. Exercice : améliorez ce code. */
     {
+        socklen_t taille = sizeof(socket);
+        csock = accept(sock, (SOCKADDR*)&csin, &taille);
         //Réception de la requête du client
         server = recv(socket, buffer, sizeof(buffer), 0);
 
