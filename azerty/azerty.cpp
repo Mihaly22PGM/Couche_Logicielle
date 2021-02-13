@@ -38,8 +38,9 @@ typedef struct sockaddr SOCKADDR;
 
 #pragma region DEFINITIONS_GLOBALES
     int server;
-    int portClient = 23;
-    char buffer[1024];
+    int portClient = 9042;
+    char buffer[32];
+    char buff[32];
     socklen_t size;
     Socket_Types tcp_Socket;
     Socket_Types unix_Socket;
@@ -95,51 +96,24 @@ int main()
     SOCKET socket = creationSocket();
     SOCKADDR_IN csin;
     SOCKET csock;
-    socklen_t crecsize = sizeof(csin);
+    socklen_t recsize = sizeof(csin);
     
-    while (listen(socket, 1) != SOCKET_ERROR) /* Boucle infinie. Exercice : améliorez ce code. */
+    while (listen(socket, 10) != SOCKET_ERROR || ) /* Boucle infinie. Exercice : améliorez ce code. */
     {
         socklen_t taille = sizeof(socket);
-        csock = accept(sock, (SOCKADDR*)&csin, &taille);
+        csock = accept(socket, (SOCKADDR*)&csin, &recsize);
         //Réception de la requête du client
-        server = recv(socket, buffer, sizeof(buffer), 0);
-
+        std::cout<<sizeof(buff)<<std::endl;
+	    server = recv(csock, buff, sizeof(buff), 0);
         if (server > 0)
         {
             //Traitement
-            std::cout << buffer << std::endl;
-
-            /*Envoi de la requête remaniée à la DB
-            sql = "";
-            if(SELECT...)
-            {
-                nontransaction N(C);
-
-                result R( N.exec( sql ));
-
-                for (result::const_iterator c = R.begin(); c != R.end(); ++c)
-                {
-                    cout << "ID = " << c[0].as<int>() << endl;
-                    cout << "Name = " << c[1].as<string>() << endl;
-                    cout << "Age = " << c[2].as<int>() << endl;
-                    cout << "Address = " << c[3].as<string>() << endl;
-                    cout << "Salary = " << c[4].as<float>() << endl;
-                }
+            for(int i=0; i<32; i++){
+                std::cout<<i<<" : "<<buff[i]<<std::endl;
             }
-            else
-            {
-                work W(C);
-
-                W.exec( sql );
-                W.commit();
-            }
-            */
-
             close(server);
         }
     }
-
-    //C.disconnect();
     close(socket);     //Pas réellement nécessaire puisque boucle infinie juste avant
 
     return EXIT_SUCCESS;
