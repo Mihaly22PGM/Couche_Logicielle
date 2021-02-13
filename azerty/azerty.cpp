@@ -1,5 +1,4 @@
-#include <iostream>
-#pragma comment(lib, "ws2_32.lib")
+#include "iostream"
 //#include <pqxx/pqxx>          //Telecharger sur https://github.com/jtv/libpqxx
 //Linux socket librairies => erreurs sous windows
 #include <string.h>
@@ -58,27 +57,27 @@ SOCKET creationSocket(){
     //Si socket invalide
     if (sock == INVALID_SOCKET)
     {
-        cout << "\nError establishing socket..." << endl;
+        std::cout << "\nError establishing socket..." << endl;
         exit(EXIT_FAILURE);
     }
     else
-        cout << "\n=> Socket server has been created..." << endl;       //DEBUG
+        std::cout << "\n=> Socket server has been created..." << endl;       //DEBUG
     
     SOCKADDR_IN server_addr;        //Déclaration du socket
 
     //Initialisation du socket
     server_addr.sin_addr.s_addr = INADDR_ANY;                   //Adresse de serveur
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(portClient);                   //Port d'écoute du client
+    server_addr.sin_port = htons(portClient);                   //Port d'éstd::coute du client
     
     //Si connexion du socket engendre une erreur
     if ((bind(sock, (struct sockaddr*)&server_addr, sizeof(server_addr))) == SOCKET_ERROR)
     {
-        cout << "=> Error binding connection, the socket has already been established..." << endl;
+        std::cout << "=> Error binding connection, the socket has already been established..." << endl;
         return -1;
     }
     else
-        cout << "=> Looking for clients..." << endl;
+        std::cout << "=> Looking for clients..." << endl;
     return sock;
 }
 
@@ -93,7 +92,7 @@ int main()
     unix_Socket.domain = AF_UNIX;   //SOCKET Unix
     unix_Socket.type = SOCK_STREAM;
     unix_Socket.protocol = 0;
-    
+
     SOCKET socket = creationSocket();
     while (listen(socket, 1) != SOCKET_ERROR) /* Boucle infinie. Exercice : améliorez ce code. */
     {
