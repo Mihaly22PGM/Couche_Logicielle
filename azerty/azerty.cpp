@@ -1,4 +1,5 @@
 #include "iostream"
+#include <stdio.h>
 //#include <pqxx/pqxx>          //Telecharger sur https://github.com/jtv/libpqxx
 //Linux socket librairies => erreurs sous windows
 #include <string.h>
@@ -8,8 +9,6 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-using namespace std;
 
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
@@ -57,11 +56,11 @@ SOCKET creationSocket(){
     //Si socket invalide
     if (sock == INVALID_SOCKET)
     {
-        std::cout << "\nError establishing socket..." << endl;
+        std::cout << "\nError establishing socket..." << std::endl;
         exit(EXIT_FAILURE);
     }
     else
-        std::cout << "\n=> Socket server has been created..." << endl;       //DEBUG
+        std::cout << "\n=> Socket server has been created..." << std::endl;       //DEBUG
     
     SOCKADDR_IN server_addr;        //Déclaration du socket
 
@@ -73,11 +72,11 @@ SOCKET creationSocket(){
     //Si connexion du socket engendre une erreur
     if ((bind(sock, (struct sockaddr*)&server_addr, sizeof(server_addr))) == SOCKET_ERROR)
     {
-        std::cout << "=> Error binding connection, the socket has already been established..." << endl;
+        std::cout << "=> Error binding connection, the socket has already been established..." << std::endl;
         return -1;
     }
     else
-        std::cout << "=> Looking for clients..." << endl;
+        std::cout << "=> Looking for clients..." << std::endl;
     return sock;
 }
 
