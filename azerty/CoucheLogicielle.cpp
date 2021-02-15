@@ -23,18 +23,11 @@ typedef struct sockaddr SOCKADDR;
 #pragma region STRUCTURES
     struct Socket_Types
     {
-        int domain;        //Socket TCP/IP
-        int type;     //Protocole TCP IP
+        int domain;        	//Socket TCP/IP
+        int type;     		//Protocole TCP IP
         int protocol;           //Socket par défaut
     };
 
-    /*struct sockaddr_in
-    {
-        short      sin_family;
-        unsigned short   sin_port;
-        struct   in_addr   sin_addr;
-        char   sin_zero[8];
-    };*/
 
 #pragma endregion STRUCTURES
 
@@ -46,7 +39,6 @@ typedef struct sockaddr SOCKADDR;
     socklen_t size;
     Socket_Types tcp_Socket;
     Socket_Types unix_Socket;
-    //SOCKET socket;
     SOCKADDR_IN csin;
     SOCKET csock;
     socklen_t recsize;

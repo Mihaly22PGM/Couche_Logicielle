@@ -3,8 +3,8 @@
 //#include <sys/socket.h>
 
 
-void Sniffer::SetConfig(addr){
-    IPAdrresse = addr;
+/*void Sniffer::SetConfig(&addr){
+    //IPAdrresse = addr;
     port = 9042;
     return;
-}
+}*/

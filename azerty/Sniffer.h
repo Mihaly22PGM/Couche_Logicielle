@@ -1,17 +1,22 @@
-#include <sys/socket.h>
-#include <string>
+#ifndef DEF_SNIFFER
+#define DEF_SNIFFER
 
-typedef int PORT; 
+#include <sys/socket.h>
+
+typedef int PORT;
 typedef struct sockaddr SOCKADDR;
+typedef struct sockaddr_in SOCKADDR_IN;
 
 class Sniffer
 {
     public:
-    void SetConfig(SOCKADDR addr);
+    char* IPAddresse;
+    PORT Port;
+    void SetConfig(SOCKADDR* addr);
 
     private:
-    SOCKADDR IPAddresse;
-    PORT port;
+    //SOCKADDR* IPAddresse;
+    //PORT Port;
 
 };
 
