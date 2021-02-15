@@ -1,4 +1,5 @@
 #include "iostream"
+#include "Sniffer.h"
 #include <stdio.h>
 //#include <pqxx/pqxx>          //Telecharger sur https://github.com/jtv/libpqxx
 //Linux socket librairies => erreurs sous windows
@@ -9,6 +10,7 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <tins/tins.h>
 
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
@@ -44,7 +46,11 @@ typedef struct sockaddr SOCKADDR;
     socklen_t size;
     Socket_Types tcp_Socket;
     Socket_Types unix_Socket;
-    
+    SOCKET socket;
+    SOCKADDR_IN csin;
+    SOCKET csock;
+    socklen_t recsize;
+
 #pragma endregion DEFINITIONS_GLOBALES
 
 
@@ -81,6 +87,11 @@ SOCKET creationSocket(){
     return sock;
 }
 
+void StartSniffer(){
+
+    printf("Youpi");
+    return;
+}
 
 int main()
 {
@@ -93,27 +104,18 @@ int main()
     unix_Socket.type = SOCK_STREAM;
     unix_Socket.protocol = 0;
 
-    SOCKET socket = creationSocket();
-    SOCKADDR_IN csin;
-    SOCKET csock;
-    socklen_t recsize = sizeof(csin);
+    socket = creationSocket();
+    recsize = sizeof(csin);
     
-    while (listen(socket, 10) != SOCKET_ERROR || ) /* Boucle infinie. Exercice : améliorez ce code. */
+    if (listen(socket, 10) != SOCKET_ERROR) /* Boucle infinie. Exercice : améliorez ce code. */
     {
-        socklen_t taille = sizeof(socket);
         csock = accept(socket, (SOCKADDR*)&csin, &recsize);
-        //Réception de la requête du client
-        std::cout<<sizeof(buff)<<std::endl;
-	    server = recv(csock, buff, sizeof(buff), 0);
-        if (server > 0)
-        {
-            //Traitement
-            for(int i=0; i<32; i++){
-                std::cout<<i<<" : "<<buff[i]<<std::endl;
-            }
-            close(server);
-        }
+        Sniffer s = new Sniffer;
+        StartSniffer(&csin);
     }
+
+
+    //C.disconnect();
     close(socket);     //Pas réellement nécessaire puisque boucle infinie juste avant
 
     return EXIT_SUCCESS;
