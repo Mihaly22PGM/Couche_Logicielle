@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <tins/tins.h>
+//#include <tins/tins.h>
 
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
@@ -79,12 +79,6 @@ SOCKET creationSocket(){
     return sock;
 }
 
-void StartSniffer(){
-
-    printf("Youpi");
-    return;
-}
-
 int main()
 {
     //Paramétrage socket TCP (vers client)
@@ -102,10 +96,10 @@ int main()
     {
         csock = accept(socket, (SOCKADDR*)&csin, &recsize);
         Sniffer snif;
-	snif.IPAddresse = inet_ntoa(csin.sin_addr);	//Récupération adresse
+	    snif.IPAddresse = inet_ntoa(csin.sin_addr);	//Récupération adresse
         snif.Port = htons(csin.sin_port);		//Récupération port
+        snif.StartSniffer();
     }
-
 
     //C.disconnect();
     close(socket);     //Pas réellement nécessaire puisque boucle infinie juste avant
