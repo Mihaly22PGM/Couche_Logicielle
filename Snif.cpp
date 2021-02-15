@@ -1,4 +1,4 @@
-#include "Sniffer.h"
+#include "Snif.h"
 //#include <tins/tins.h>
 //#include <sys/socket.h>
 

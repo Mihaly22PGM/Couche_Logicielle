@@ -1,5 +1,5 @@
 #include "iostream"
-#include "Sniffer.h"
+#include "Snif.h"
 #include <stdio.h>
 //#include <pqxx/pqxx>          //Telecharger sur https://github.com/jtv/libpqxx
 //Linux socket librairies => erreurs sous windows
@@ -95,7 +95,7 @@ int main()
     if (listen(socket, 10) != SOCKET_ERROR) /* Boucle infinie. Exercice : améliorez ce code. */
     {
         csock = accept(socket, (SOCKADDR*)&csin, &recsize);
-        Sniffer snif;
+        Snif snif;
 	    snif.IPAddresse = inet_ntoa(csin.sin_addr);	//Récupération adresse
         snif.Port = htons(csin.sin_port);		//Récupération port
         snif.StartSniffer();

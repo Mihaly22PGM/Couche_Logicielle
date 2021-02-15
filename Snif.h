@@ -8,7 +8,7 @@ typedef int PORT;
 typedef struct sockaddr SOCKADDR;
 typedef struct sockaddr_in SOCKADDR_IN;
 
-class Sniffer
+class Snif
 {
     public:
     char* IPAddresse;
