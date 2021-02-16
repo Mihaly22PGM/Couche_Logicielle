@@ -19,46 +19,45 @@ using std::exception;
 
 using namespace Tins;
 
+
+typedef struct Trame Trame;
+typedef struct ListeTrames ListeTrames;
+
 class Snif {
 
 public:
     
-    Snif();
-    std::vector<Packet> vt;
-    void run(const string& interface);
-    void readTCP();
-    typedef struct Trame Trame;
-    struct Trame
-{
-	PDU& pdu;
-	Trame *suivant;
-}
-typedef struct ListeTrames ListeTrames;
-struct ListeTrames
-{
-	Trame* premier;
-}
+    Snif(); //Constructor
 
-
-private:
-    bool callback(const PDU& pdu);
-    
-    SnifferConfiguration config;
-    PacketSender sender_;
-    ListeTrames* listetrames = new ListeTrames;
-    int CompteurTrames;
-    typedef struct Trame Trame;
+    #pragma region Structure
     struct Trame
     {
-    	PDU& pdu;
-    	Trame *suivant;
-    };
-
-    typedef struct ListeTrames ListeTrame;
+        PDU& pdu;
+        Trame *suivant;
+    }
     struct ListeTrames
     {
-    	Trame* premier;
-    };
+        Trame* premier;
+    }
+    #pragma endregion Structure
+
+    #pragma region Fonctions
+    void run(const string& interface);
+    void readTCP();
+    ListeTrames* initialisation();
+    void insertion();
+    void suppression();
+    #pragma endregion Fonctions
+
+private:
+    //bool callback(const PDU& pdu);
+    
+    SnifferConfiguration config;
+    //PacketSender sender_;
+    ListeTrames* listetrames;
+    //int CompteurTrames;
+    std::vector<Packet> vt;
+
 
     //ListeTrame* initialisation();
 

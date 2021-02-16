@@ -15,7 +15,7 @@
 using namespace std;
 
 Snif snif;
-
+ListeTrames *liste = snif.initialisation();
 //std::thread th_Sniffer;
 
 /*void CloseThreads(){
@@ -35,7 +35,10 @@ int main(int argc, char* argv[]) {
     }
     try {
 	std::async(std::launch::async, &Snif::run, &snif, argv[1]);	//Lancement du sniffer en asyncrone
-	
+	while(1){
+        snif.readTCP(liste);
+        snif.suppression(liste);
+    }
 	//Snif snif
         //snif.run(argv[]);
     	

@@ -11,40 +11,33 @@ using std::exception;
 
 using namespace Tins;
 */
-Snif::Snif(){}
-	
-ListeTrames* Snif::initialisation(){
-	//ListeTrames* listetrames = new ListeTrames;
 
-	if (liste == NULL)
-    	{
-        	exit(EXIT_FAILURE);
-    	}
+Snif::Snif(){}  //Constructor
+	
+#pragma region Liste
+ListeTrames* Snif::initialisation(){
+	listetrames = new ListeTrames;
+    if (liste == NULL)
+        exit(EXIT_FAILURE);
 	listetrames->premier = NULL
 	return liste;
 }
 
-void Snif::insertion(Liste* liste, PDU& pdu)
+void Snif::insertion(ListeTrames* liste, PDU& pdu)
 {
     Trame* newTrame = new Trame;
     if (listetrames == NULL || newtrame == NULL)
-    {
         exit(EXIT_FAILURE);
-    }
-
     newTrame->trame = &pdu;
     newTrame->suivant = listetrames->premier;
     listetrames->premier = newTrame;
    
 }
 
-void Snif::suppression(Liste* liste)
+void Snif::suppression(ListeTrames* liste)
 {
     if (liste == NULL)
-    {
         exit(EXIT_FAILURE);
-    }
-
     if (liste->premier != NULL)
     {
         Trame* trameToDelete = listetrames->premier;
@@ -52,8 +45,9 @@ void Snif::suppression(Liste* liste)
         free(trameToDelete);
     }
 }
+#pragma endregion Liste
 
-void Snif::run(const string& interface, ListeTrames liste) {
+void Snif::run(const string& interface, ListeTrames* liste) {
         //using std::placeholders::_1;
         //sender_.default_interface(interface);           // Make the PacketSender use this interface by default     
         
@@ -69,15 +63,16 @@ void Snif::run(const string& interface, ListeTrames liste) {
 	}
    }
 
-/*void Snif::readTCP(){
-	if (vt.size()>0){
-	PDU & pdu = vt.front();
+void Snif::readTCP(ListeTrames* liste){
+	if (liste->premier != NULL){
+	PDU & pdu = liste->premier;
+    
 	std::cout << "At: " << packet.timestamp().seconds()
                     << " - " << packet.pdu()->rfind_pdu<IP>().src_addr() 
                     << std::endl;
 	}
 	return;
-}*/
+}
 
 
 /*bool handle(PDU& pdu){
