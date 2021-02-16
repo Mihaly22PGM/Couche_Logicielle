@@ -5,6 +5,7 @@
 #include <string>
 #include <functional>
 #include <tins/tins.h>
+#include <vector>
 
 //#include <sys/socket.h>
 
@@ -19,18 +20,48 @@ using std::exception;
 using namespace Tins;
 
 class Snif {
+
 public:
-    SnifferConfiguration config;    // Create the sniffer configuration
+    
+    Snif();
+    std::vector<Packet> vt;
+    void run(const string& interface);
+    void readTCP();
+    typedef struct Trame Trame;
+    struct Trame
+{
+	PDU& pdu;
+	Trame *suivant;
+}
+typedef struct ListeTrames ListeTrames;
+struct ListeTrames
+{
+	Trame* premier;
+}
 
-    tcp_connection_closer() {
-    }
-
-    void run(const string& interface)
 
 private:
-    bool callback(const PDU& pdu)
-
+    bool callback(const PDU& pdu);
+    
+    SnifferConfiguration config;
     PacketSender sender_;
+    ListeTrames* listetrames = new ListeTrames;
+    int CompteurTrames;
+    typedef struct Trame Trame;
+    struct Trame
+    {
+    	PDU& pdu;
+    	Trame *suivant;
+    };
+
+    typedef struct ListeTrames ListeTrame;
+    struct ListeTrames
+    {
+    	Trame* premier;
+    };
+
+    //ListeTrame* initialisation();
+
 };
 /*class Snif
 {
