@@ -29,18 +29,6 @@ public:
     
     Snif(); //Constructor
 
-    #pragma region Structure
-    struct Trame
-    {
-        PDU& pdu;
-        Trame *suivant;
-    }
-    struct ListeTrames
-    {
-        Trame* premier;
-    }
-    #pragma endregion Structure
-
     #pragma region Fonctions
     void run(const string& interface);
     void readTCP();
@@ -49,12 +37,14 @@ public:
     void suppression();
     #pragma endregion Fonctions
 
+    ListeTrames* listetrames;
+
 private:
     //bool callback(const PDU& pdu);
     
     SnifferConfiguration config;
     //PacketSender sender_;
-    ListeTrames* listetrames;
+    
     //int CompteurTrames;
     std::vector<Packet> vt;
 

@@ -16,11 +16,7 @@ Snif::Snif(){}  //Constructor
 	
 #pragma region Liste
 ListeTrames* Snif::initialisation(){
-	listetrames = new ListeTrames;
-    if (liste == NULL)
-        exit(EXIT_FAILURE);
-	listetrames->premier = NULL
-	return liste;
+	
 }
 
 void Snif::insertion(ListeTrames* liste, PDU& pdu)
@@ -36,14 +32,7 @@ void Snif::insertion(ListeTrames* liste, PDU& pdu)
 
 void Snif::suppression(ListeTrames* liste)
 {
-    if (liste == NULL)
-        exit(EXIT_FAILURE);
-    if (liste->premier != NULL)
-    {
-        Trame* trameToDelete = listetrames->premier;
-        listetrames->premier = listetrames->premier->suivant;
-        free(trameToDelete);
-    }
+   
 }
 #pragma endregion Liste
 
@@ -66,7 +55,7 @@ void Snif::run(const string& interface, ListeTrames* liste) {
 void Snif::readTCP(ListeTrames* liste){
 	if (liste->premier != NULL){
 	PDU & pdu = liste->premier;
-    
+
 	std::cout << "At: " << packet.timestamp().seconds()
                     << " - " << packet.pdu()->rfind_pdu<IP>().src_addr() 
                     << std::endl;

@@ -1,32 +1,96 @@
-#include "Snif.h"
-
 #include "iostream"
-//#include <stdio.h>
-//#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-//#include <stdlib.h>
-//#include <unistd.h>
 #include <thread>
 #include <future>
 
-using namespace std;
+using std::string;
+using std::bind;
+using std::exception;
+using namespace Tins;
 
-Snif snif;
-ListeTrames *liste = snif.initialisation();
-//std::thread th_Sniffer;
+typedef struct Trame Trame;
+typedef struct ListeTrames ListeTrames;
 
-/*void CloseThreads(){
-	th_Sniffer.join();
-	return;
-}*/
+#pragma region Classes
+class Snif {
 
-/*void StartSniffer(char* argv[]){
-	snif.run(argv[1]);
-	return;
-}*/
+public:
+
+    Snif(){}; //Constructor
+
+    struct Trame
+    {
+        PDU& pdu;
+        Trame *suivant;
+    }
+    struct ListeTrames
+    {
+        Trame* premier;
+    }
+
+    ListeTrames* listetrames;
+
+    void run(const string& interface, ListeTrames* liste){
+        //using std::placeholders::_1;
+        //sender_.default_interface(interface);           // Make the PacketSender use this interface by default     
+        config.set_filter("tcp");               //Get only tcp
+	    //config.set_filter("")
+        config.set_immediate_mode(true);        //TODO : check if needed
+        //config.set_promisc_mode(true);
+	    std::cout<<"Setup"<<std::endl;
+        Sniffer sniffer(interface, config);     // Create the sniffer and start the capture
+        //sniffer.sniff_loop(make_sniffer_handler(this, &Snif::handle)));
+   	    while(vt.size()<1000000){
+		    insertion(liste, sniffer.next_packet());
+	}
+    };
+    void readTCP(ListeTrames* liste){
+        if (liste->premier != NULL){
+	        PDU & pdu = liste->premier;
+	        std::cout << "At: " << packet.timestamp().seconds()
+                << " - " << packet.pdu()->rfind_pdu<IP>().src_addr() 
+                << std::endl;
+	    }
+	    return;
+    };
+    ListeTrames* initialisation(){
+        listetrames = new ListeTrames;
+        if (listetrames == NULL)
+            exit(EXIT_FAILURE);
+        listetrames->premier = NULL
+        return listetrames;
+    };
+    void insertion(ListeTrames* liste, PDU& pdu){
+        Trame* newTrame = new Trame;
+        if (listetrames == NULL || newtrame == NULL)
+            exit(EXIT_FAILURE);
+        newTrame->trame = &pdu;
+        newTrame->suivant = listetrames->premier;
+        listetrames->premier = newTrame;
+    };
+    void suppression(ListeTrames* liste){
+        if (liste == NULL)
+            exit(EXIT_FAILURE);
+        if (liste->premier != NULL)
+        {
+            Trame* trameToDelete = listetrames->premier;
+            listetrames->premier = listetrames->premier->suivant;
+            free(trameToDelete);
+        }
+    };
+
+private:
+    SnifferConfiguration config;
+    std::vector<Packet> vt;
+};
+#pragma endregion Classes
+
+#pragma region Global
+
+#pragma endregion Global
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -34,20 +98,16 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     try {
-	std::async(std::launch::async, &Snif::run, &snif, argv[1]);	//Lancement du sniffer en asyncrone
-	while(1){
-        snif.readTCP(liste);
-        snif.suppression(liste);
-    }
-	//Snif snif
-        //snif.run(argv[]);
-    	
+        Snif snif = new Snif;
+        std::async(std::launch::async, &Snif::run, &snif, argv[1]);	//Lancement du sniffer en asyncrone
+        while(1){
+            snif.readTCP(liste);
+            snif.suppression(liste);
+        }	
     }
     catch (exception& ex) {
         std::cout << "[-] Error: " << ex.what() << std::endl;
-        //th_Sniffer.join()
 	return 1;
     }
-	//th_Sniffer.join();
 	return 0;
 }
