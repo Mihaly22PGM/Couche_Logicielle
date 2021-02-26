@@ -1,8 +1,6 @@
 all: compile
 
 compile:
-	sudo g++ main.cpp Snif.cpp -o CoucheLogicielle -ltins -std=c++11 -pthread
-	#g++ CoucheLogicielle.cpp -o CoucheLogicielle -ltins 
-
+	g++ main.cpp c_Socket.c -pthread -o CoucheLogicielle
 clean:
-	rm -rf CoucheLogicielle 
+	rm -rf CoucheLogicielle
