@@ -1,0 +1,4 @@
+D:\H.E.H\Travaux\TFE\CQLtoSQL\CQLtoSQL\Debug\CQLtoSQL.exe
+D:\H.E.H\Travaux\TFE\CQLtoSQL\CQLtoSQL\Debug\CQLtoSQL.pdb
+D:\H.E.H\Travaux\TFE\Couche logicielle\CQLtoSQL\CQLtoSQL\Debug\CQLtoSQL.exe
+D:\H.E.H\Travaux\TFE\Couche logicielle\CQLtoSQL\CQLtoSQL\Debug\CQLtoSQL.pdb
