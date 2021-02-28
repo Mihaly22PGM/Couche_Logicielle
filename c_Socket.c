@@ -13,13 +13,18 @@ typedef int SOCKET;
 
 #pragma region Global
 
-SOCKET listenfd = 0;
-SOCKET connfd = 0;
-SOCKET connfd2 = 0;
+SOCKET sockServer = 0;
+SOCKET sockClient = 0;
+SOCKET sockDataClient = 0;
 int portClients = 9042;
-struct sockaddr_in serv_addr; 
-char buffer[1024];
-char buffer2[1024];
+struct sockaddr_in serv_addr;
+char RequestNumber[2];
+char RequestOpcode;
+char Request[]; 
+char RequestSizeHex[4];
+long int RequestSize;
+char buffClient[1024];	//TODO rename and set a lower value? To check
+//char buffer2[1024];
 
 int f_length[] = {9, 9, 162, 693, 610, 472, 7240, 5792, 5157, 14480, 9309, 9, 693, 105, 105};
 
@@ -2836,72 +2841,79 @@ unsigned char f_connexion[][15000] = {
 #pragma region Fonctions
 
 void INITSocket(){
-    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    sockServer = socket(AF_INET, SOCK_STREAM, 0);
     memset(&serv_addr, '0', sizeof(serv_addr));
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(portClients); 
 
-    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)); 
+    bind(sockServer, (struct sockaddr*)&serv_addr, sizeof(serv_addr)); 
 
-    listen(listenfd, 10); 
+    listen(sockServer, 10); 
 
-    connfd = accept(listenfd, (struct sockaddr*)NULL,NULL);
+    sockClient = accept(sockServer, (struct sockaddr*)NULL,NULL);
     int i = 0;
 
 	//Boucle pour l'envoi des frames du premier socket
     while(i<11){
-     	int server = recv(connfd, buffer, sizeof(buffer),0);
+     	int server = recv(sockClient, buffClient, sizeof(buffClient),0);
         if(server>0){
-            write(connfd, f_connexion[i],f_length[i]);
+            write(sockClient, f_connexion[i],f_length[i]);
             i++;
         }
         if(i==6){
             for (int j=0; j<5; j++){
-                write(connfd, f_connexion[i], f_length[i]);
+                write(sockClient, f_connexion[i], f_length[i]);
                 i++;
             }
-            connfd2 = accept(listenfd, (struct sockaddr*)NULL, NULL);
+            sockDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
         }
     }
 	//Frames pour connexion du second socket
     while(i<13){
-		int server2 = recv(connfd2, buffer, sizeof(buffer),0);
-			if(server2>0){
-			write(connfd2, f_connexion[i],f_length[i]);
+		int server2 = recv(sockDataClient, buffClient, sizeof(buffClient),0);
+		if(server2>0){
+			write(sockDataClient, f_connexion[i],f_length[i]);
 			i++;
 		}
     }
 }
 
-void SYN_responsesA(){
+void TraitementFrameClient(){
     int server;
     while(1){
 		server = 0;
-		server = recv(connfd, buffer, sizeof(buffer),0);
+		server = recv(sockClient, buffClient, sizeof(buffClient),0);
 		if(server > 0){
-			f_connexion[13][2] = buffer[2];
-			f_connexion[13][3] = buffer[3];
-			write(connfd, f_connexion[13], f_length[13]);
+			f_connexion[13][2] = buffClient[2];
+			f_connexion[13][3] = buffClient[3];
+			write(sockClient, f_connexion[13], f_length[13]);
 		}
     }
 }
 
-void TraitementFrame(char *bodyFrame){  
+void TraitementFrameDataClient(char *bodyFrame){  
 	if(bodyFrame[4] == '\x07'){
 		printf("Taille buffer : %d", sizeof(bodyFrame));	//DEBUG
-		for (int i = 9; i<sizeof(buffer2); i++){
-			printf("%c", buffer2[i]);
+		for (int i = 9; i<sizeof(bodyFrame); i++){
+			printf("%c", bodyFrame[i]);
 		}
+		RequestNumber[0] = bodyFrame[2];
+		RequestNumber[1] = bodyFrame[3];
+		RequestOpcode = bodyFrame[4];
+		memcpy(RequestSizeHex, bodyFrame[9], 4);	//TODO check why 2 lengths
+		RequestSize = strtol(RequestSizeHex, NULL, 16);
+		memcpy(Request, bodyFrame[13], RequestSize);
+		
 	}
 	else if(bodyFrame[4] == '\x05'){
 		f_connexion[14][2] = bodyFrame[2];
 		f_connexion[14][3] = bodyFrame[3];
-		write(connfd2, f_connexion[14], f_length[14]);
+		write(sockDataClient, f_connexion[14], f_length[14]);
 	}
 	else{
-		printf("SYN_responsesB() : Opcode non reconnu, opcode : %x\r\n", bodyFrame[4]);
+		printf("Opcode non reconnu, opcode : %x\r\n", bodyFrame[4]);
 	}
 }
 
