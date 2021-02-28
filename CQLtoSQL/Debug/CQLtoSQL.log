@@ -1,8 +1,0 @@
-﻿  CQLtoSQL.cpp
-D:\H.E.H\Travaux\TFE\Couche logicielle\CQLtoSQL\CQLtoSQL\CQLtoSQL.cpp(46,27): warning C4018: '<' : incompatibilité signed/unsigned
-D:\H.E.H\Travaux\TFE\Couche logicielle\CQLtoSQL\CQLtoSQL\CQLtoSQL.cpp(52,27): warning C4018: '<' : incompatibilité signed/unsigned
-D:\H.E.H\Travaux\TFE\Couche logicielle\CQLtoSQL\CQLtoSQL\CQLtoSQL.cpp(71,23): warning C4018: '<' : incompatibilité signed/unsigned
-D:\H.E.H\Travaux\TFE\Couche logicielle\CQLtoSQL\CQLtoSQL\CQLtoSQL.cpp(145,27): warning C4018: '<' : incompatibilité signed/unsigned
-D:\H.E.H\Travaux\TFE\Couche logicielle\CQLtoSQL\CQLtoSQL\CQLtoSQL.cpp(171,27): warning C4018: '<' : incompatibilité signed/unsigned
-D:\H.E.H\Travaux\TFE\Couche logicielle\CQLtoSQL\CQLtoSQL\CQLtoSQL.cpp(199): warning C4715: 'CQLtoSQL' : les chemins de contrôle ne retournent pas tous une valeur
-  CQLtoSQL.vcxproj -> D:\H.E.H\Travaux\TFE\Couche logicielle\CQLtoSQL\CQLtoSQL\Debug\CQLtoSQL.exe
