@@ -20,12 +20,12 @@ string create_select_sql_query(string _table, string _key, vector<string> _field
     //On regarde si, dans la requête CQL, on voulait prendre * ou des champs particuliers
     if (_fields[0] != "*")
     {
-        returned_select_sql_query += " WHERE 'column_name' IN (";
+        returned_select_sql_query += " WHERE column_name IN ('";
         for (string field : _fields)
         {
-            returned_select_sql_query += field + ", ";
+            returned_select_sql_query += field + "', '";
         }
-        returned_select_sql_query = returned_select_sql_query.substr(0, returned_select_sql_query.length() - 2);
+        returned_select_sql_query = returned_select_sql_query.substr(0, returned_select_sql_query.length() - 3);
         returned_select_sql_query += ");";
     }
     return returned_select_sql_query;
@@ -48,9 +48,9 @@ string create_update_sql_query(string _table, string _key, vector<string> _value
         returned_update_sql_query += "END) WHERE column_name IN ('";
         for (int i = 0; i < _values.size(); i = i + 2)
         {
-            returned_update_sql_query += _values[i] + "', ";
+            returned_update_sql_query += _values[i] + "', '";
         }
-        returned_update_sql_query = returned_update_sql_query.substr(0, returned_update_sql_query.length() - 3);
+        returned_update_sql_query = returned_update_sql_query.substr(0, returned_update_sql_query.length() - 4);
         returned_update_sql_query += "');";
     }
     else
@@ -63,15 +63,12 @@ string create_update_sql_query(string _table, string _key, vector<string> _value
 string create_insert_sql_query(string _table, string _key, vector<string> _columns,  vector<string> _values)
 {
     string returned_insert_sql_query =  "START TRANSACTION; "
-                                        "CREATE TABLE " + _key + " (column_name string, value string); "
-                                        "INSERT INTO " + _key + " (column_name, value) VALUES ";
-    for (int i = 0; i < _values.size(); i++)
+                                        "CREATE TABLE " + _key + " (column_name varchar(255), value varchar(255)); ";
+    for (int i = 1; i < _values.size(); i++)
     {
-        returned_insert_sql_query += "(" + _columns[i] + ", '" + _values[i] + "'), ";
+        returned_insert_sql_query += "INSERT INTO " + _key + " (column_name, value) VALUES('" + _columns[i] + "', '" + _values[i] + "'); ";
     }
-    returned_insert_sql_query = returned_insert_sql_query.substr(0, returned_insert_sql_query.length() - 2);
-    returned_insert_sql_query +=    "; "
-                                    "COMIT;";
+    returned_insert_sql_query += "COMMIT;";
 
     return returned_insert_sql_query;
 }
@@ -486,10 +483,10 @@ int main()
     //cin >> incoming_cql_query;
     //cout << incoming_cql_query << endl;
 
-    //incoming_cql_query = "SELECT x, 'y', a.z FROM table WHERE id = 'key' LIMIT 1;";
-    //incoming_cql_query = "UPDATE table SET colonne_1 = 'valeur_1', colonne_2 = 'valeur 2', colonne_3 = 'valeur 3' WHERE 'id' = key;";
-    //incoming_cql_query = "INSERT INTO table (nom_colonne_1, nom_colonne_2, ...) VALUES ('valeur_1', 'valeur_2', ...);";
-    incoming_cql_query = "DELETE FROM table WHERE id = 'key';";
+    //incoming_cql_query = "SELECT level, psnid FROM azerty WHERE id = 'dallas' LIMIT 1;";
+    //incoming_cql_query = "UPDATE azerty SET level = '9', psnid = 'Mihaly22PGM' WHERE id = 'dallas';";
+    //incoming_cql_query = "INSERT INTO azerty (id, level, psnid) VALUES ('Dallas', '9', 'Mihaly22PGM');";
+    incoming_cql_query = "DELETE FROM azerty WHERE id = 'dallas';";
 
     //On la parse et on la convertit pour le RWCS
     translated_sql_query = CQLtoSQL(incoming_cql_query);
