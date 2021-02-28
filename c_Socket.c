@@ -2888,7 +2888,7 @@ void SYN_responsesA(){
     }
 }
 
-void TraitementFrame(char[] bodyFrame){  
+void TraitementFrame(char *bodyFrame){  
 	if(bodyFrame[4] == '\x07'){
 		printf("Taille buffer : %d", sizeof(bodyFrame));	//DEBUG
 		for (int i = 9; i<sizeof(buffer2); i++){

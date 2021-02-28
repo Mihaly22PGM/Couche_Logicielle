@@ -19,7 +19,7 @@ int server;
 char opcode;
 char buff[1024];
 char longueur;
-list<char[]> l_bufferIN;
+std::list<char*> l_bufferIN;
 #pragma endregion Global
 
 #pragma region Prototypes
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 { 
     INITSocket();   //Sockets creation
 
-        ConnexionCQLSH();
+        //ConnexionCQLSH();
 
         //Starting threads for sockets
         std::thread th_SYN(SYN_responsesA);
@@ -41,7 +41,10 @@ int main(int argc, char *argv[])
             server = recv(connfd2, buffer2, sizeof(buffer2),0);
             if(server > 0){
                 l_bufferIN.push_front(buffer2);
-			}
+		printf("\r\n");
+		printf("Pushed\r\n");
+		printf("Longueur de liste : %d \r\n", l_bufferIN.size());
+	    }
         }
         //Stop the threads
         th_SYN.join();
@@ -56,6 +59,7 @@ void Traitement(){
         if(l_bufferIN.size()>0){
             TraitementFrame(l_bufferIN.back());
             l_bufferIN.pop_back();
+	    printf("Pop\r\n");
         }
     }
 }
