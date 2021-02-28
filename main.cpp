@@ -10,29 +10,53 @@
 #include <time.h>
 #include <thread>
 #include "c_Socket.h"
+#include <list>
 
 typedef int SOCKET;
 
+#pragma region Global
+int server;
+char opcode;
+char buff[1024];
+char longueur;
+list<char[]> l_bufferIN;
+#pragma endregion Global
+
+#pragma region Prototypes
+void Traitement();
+#pragma endregion Prototypes
+
 int main(int argc, char *argv[])
 { 
-    //Sockets creation
-    INITSocket();
+    INITSocket();   //Sockets creation
 
-    //Starting threads for sockets
-    std::thread th_SYN(SYN_responsesA);
-    std::thread th_SYN2(SYN_responsesB);
-    printf("Listen Socket : %d\r\n",listenfd);
-    printf("Socket Client : %d\r\n",connfd);
-    printf("Socket Client 2 : %d\r\n",connfd2);
-    while(1){
+        ConnexionCQLSH();
 
-    }; //Boucle infinie
+        //Starting threads for sockets
+        std::thread th_SYN(SYN_responsesA);
+        std::thread th_Traitement(Traitement);
 
-    //Stop the threads
-    th_SYN.join();
-    th_SYN2.join();
+        while(1){
+            server = 0;
+            server = recv(connfd2, buffer2, sizeof(buffer2),0);
+            if(server > 0){
+                l_bufferIN.push_front(buffer2);
+			}
+        }
+        //Stop the threads
+        th_SYN.join();
+        th_Traitement.join();
     
     return 0;
 }
 
-
+#pragma region Fonctions
+void Traitement(){
+    while(1){
+        if(l_bufferIN.size()>0){
+            TraitementFrame(l_bufferIN.back());
+            l_bufferIN.pop_back();
+        }
+    }
+}
+#pragma endregion Fonctions

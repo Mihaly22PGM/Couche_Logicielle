@@ -2888,17 +2888,21 @@ void SYN_responsesA(){
     }
 }
 
-void SYN_responsesB(){
-    int server;
-    while(1){
-		server = 0;
-		server = recv(connfd2, buffer2, sizeof(buffer2),0);
-		if(server > 0){
-			f_connexion[14][2] = buffer2[2];
-			f_connexion[14][3] = buffer2[3];
-			write(connfd2, f_connexion[14], f_length[14]);
-			}
-    }
+void TraitementFrame(char[] bodyFrame){  
+	if(bodyFrame[4] == '\x07'){
+		printf("Taille buffer : %d", sizeof(bodyFrame));	//DEBUG
+		for (int i = 9; i<sizeof(buffer2); i++){
+			printf("%c", buffer2[i]);
+		}
+	}
+	else if(bodyFrame[4] == '\x05'){
+		f_connexion[14][2] = bodyFrame[2];
+		f_connexion[14][3] = bodyFrame[3];
+		write(connfd2, f_connexion[14], f_length[14]);
+	}
+	else{
+		printf("SYN_responsesB() : Opcode non reconnu, opcode : %x\r\n", bodyFrame[4]);
+	}
 }
 
 #pragma endregion Fonctions

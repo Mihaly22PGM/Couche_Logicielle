@@ -13,4 +13,4 @@ extern struct sockaddr_in serv_addr;
 
 extern void INITSocket();
 extern void SYN_responsesA();
-extern void SYN_responsesB();
+extern void TraitementFrame(char[10240]);
