@@ -20,11 +20,12 @@ int portClients = 9042;
 struct sockaddr_in serv_addr;
 char RequestNumber[2];
 char RequestOpcode;
-char Request[]; 
-char RequestSizeHex[4];
+//char Request[1024]; 	//TODO check lenght
+char *RequestSizeHex;
 long int RequestSize;
 char buffClient[1024];	//TODO rename and set a lower value? To check
 //char buffer2[1024];
+Request s_Request;
 
 int f_length[] = {9, 9, 162, 693, 610, 472, 7240, 5792, 5157, 14480, 9309, 9, 693, 105, 105};
 
@@ -2893,18 +2894,28 @@ void TraitementFrameClient(){
     }
 }
 
-void TraitementFrameDataClient(char *bodyFrame){  
+Request TraitementFrameDataClient(char *bodyFrame){  
 	if(bodyFrame[4] == '\x07'){
 		printf("Taille buffer : %d", sizeof(bodyFrame));	//DEBUG
 		for (int i = 9; i<sizeof(bodyFrame); i++){
 			printf("%c", bodyFrame[i]);
 		}
-		RequestNumber[0] = bodyFrame[2];
-		RequestNumber[1] = bodyFrame[3];
-		RequestOpcode = bodyFrame[4];
-		memcpy(RequestSizeHex, bodyFrame[9], 4);	//TODO check why 2 lengths
-		RequestSize = strtol(RequestSizeHex, NULL, 16);
-		memcpy(Request, bodyFrame[13], RequestSize);
+		s_Request.RequestNumber[0] = bodyFrame[2];
+		s_Request.RequestNumber[1] = bodyFrame[3];
+		//s_Request.RequestNumber = (bodyFrame[2]<<8)|(bodyFrame[3]);
+		printf("%s",s_Request.RequestNumber);
+		s_Request.RequestOpcode = bodyFrame[4];
+		RequestSize = (bodyFrame[9]<<24)|(bodyFrame[10]<<16)|(bodyFrame[11]<<8)|(bodyFrame[12]);
+		printf("%d",RequestSize);
+		strncpy(s_Request.Request, bodyFrame+13, RequestSize);
+		return s_Request;
+		//memcpy(RequestSizeHex, (void*) bodyFrame[9], 4);	//TODO check why 2 lengths
+		//RequestSize = strtol(RequestSizeHex, NULL, 16);
+		//memcpy(s_Request.Request, (void*) bodyFrame[13], RequestSize);
+		//TODO can not send a list of requests, only use CQLSH for now
+		// memcpy(RequestSizeHex, bodyFrame[9], 4);	//TODO check why 2 lengths
+		// RequestSize = strtol(RequestSizeHex, NULL, 16);
+		// memcpy(Request, bodyFrame[13], RequestSize);
 		
 	}
 	else if(bodyFrame[4] == '\x05'){

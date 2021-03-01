@@ -16,7 +16,9 @@ typedef int SOCKET;
 
 #pragma region Global
 char buffData[1024];
+Request s_Requete;
 std::list<char*> l_bufferIN;
+std::list<Request> l_bufferRequests;
 #pragma endregion Global
 
 #pragma region Prototypes
@@ -52,7 +54,12 @@ int main(int argc, char *argv[])
 void Traitement(){
     while(1){
         if(l_bufferIN.size()>0){
-            TraitementFrameDataClient(l_bufferIN.back());
+            s_Requete = TraitementFrameDataClient(l_bufferIN.back());
+            l_bufferRequests.push_front(TraitementFrameDataClient(l_bufferIN.back()));
+            printf("*****************Nouvelle requete dans buffer*****************\n\r");
+            printf("Opcode : %c\r\n", s_Requete.RequestOpcode);
+            printf("Request Number : %d \r\n", s_Requete.RequestNumber);
+            printf("Requete : %s\r\n", s_Requete.Request);
             l_bufferIN.pop_back();
 	    printf("Pop\r\n");
         }
