@@ -1,7 +1,7 @@
 all:	compile hexconverter
 
 compile:
-	g++ main.cpp c_Socket.c -pthread -o CoucheLogicielle
+	g++ main.cpp c_Socket.c -pthread -std=c++11 -o CoucheLogicielle
 
 hexconverter:
 	gcc Functionals/converterHEX.c -o HEXConverter
