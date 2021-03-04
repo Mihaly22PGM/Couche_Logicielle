@@ -25,7 +25,7 @@ char *RequestSizeHex;
 long int RequestSize;
 char buffClient[1024];	//TODO rename and set a lower value? To check
 //char buffer2[1024];
-Request s_Request;
+struct Request s_Request;
 
 int f_length[] = {9, 9, 162, 693, 610, 472, 7240, 5792, 5157, 14480, 9309, 9, 693, 105, 105};
 
@@ -2894,12 +2894,16 @@ void TraitementFrameClient(){
     }
 }
 
-Request TraitementFrameDataClient(char *bodyFrame){  
+Request TraitementFrameDataClient(const char* bodyFrame){  
+	printf("HERE\r\n");
+	printf("%s", *bodyFrame);
 	if(bodyFrame[4] == '\x07'){
-		printf("Taille buffer : %d", sizeof(bodyFrame));	//DEBUG
-		for (int i = 9; i<sizeof(bodyFrame); i++){
+		//printf("Taille buffer : %d", sizeof(bodyFrame));	//DEBUG
+		printf("%d\r\n", sizeof(bodyFrame));
+		/*for (int i = 9; i<sizeof(bodyFrame); i++){
 			printf("%c", bodyFrame[i]);
-		}
+		}*/
+		//printf("%s\r\n", *bodyFrame);
 		s_Request.RequestNumber[0] = bodyFrame[2];
 		s_Request.RequestNumber[1] = bodyFrame[3];
 		//s_Request.RequestNumber = (bodyFrame[2]<<8)|(bodyFrame[3]);
@@ -2908,6 +2912,7 @@ Request TraitementFrameDataClient(char *bodyFrame){
 		RequestSize = (bodyFrame[9]<<24)|(bodyFrame[10]<<16)|(bodyFrame[11]<<8)|(bodyFrame[12]);
 		printf("%d",RequestSize);
 		strncpy(s_Request.Request, bodyFrame+13, RequestSize);
+		printf("2\r\n");
 		return s_Request;
 		//memcpy(RequestSizeHex, (void*) bodyFrame[9], 4);	//TODO check why 2 lengths
 		//RequestSize = strtol(RequestSizeHex, NULL, 16);
@@ -2929,3 +2934,4 @@ Request TraitementFrameDataClient(char *bodyFrame){
 }
 
 #pragma endregion Fonctions
+

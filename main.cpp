@@ -24,7 +24,17 @@ typedef int SOCKET;
 #pragma region Global
 char buffData[1024];
 std::list<char*> l_bufferFrames;
+//Request req;
 std::list<Request> l_bufferRequests;
+struct Requests{
+    char header[12];
+    char opcode;
+    long int size;
+    char request[1024];
+};
+Requests req;
+
+
 string incoming_cql_query;
 string translated_sql_query;
 #pragma endregion Global
@@ -64,10 +74,13 @@ int main(int argc, char *argv[])
                 l_bufferFrames.push_front(buffData);
                 printf("\r\n");
                 printf("Pushed\r\n");
+		printf("Size buff : %d\r\n", sizeof(buffData));
+		printf("Size Buff List : %d \r\n", sizeof(l_bufferFrames.front()));
                 printf("Longueur de liste : %d \r\n", l_bufferFrames.size());
 	        }
         }
         //Stop the threads
+	th_Requests.join();
         th_FrameClient.join();
         th_FrameData.join();
     
@@ -77,9 +90,56 @@ int main(int argc, char *argv[])
 #pragma region FonctionsThreads
 void TraitementFrameData(){
     while(1){
+	//cout<<"BuffSize : "<<l_bufferRequests.size()<<endl;
         if(l_bufferFrames.size()>0){
-            l_bufferRequests.push_front(TraitementFrameDataClient(l_bufferFrames.back()));
-            l_bufferFrames.pop_back();
+	    //TraitementFrameDataClient(l_bufferFrames.back());
+            memcpy(req.header,l_bufferFrames.back(),13);
+            //req.header[11] = 0x03;
+	    for(int i=0; i<13; i++){
+		printf("%d ", req.header[i]);}
+	    //std::cout<<std::dec<<req.header[i]<< " ";}
+	    //req.opcode = req.header[4];
+            //req.size = req.header;
+            /*req.size[0] = req.header[9];
+	    req.size[1] = req.header[10];
+	    req.size[2] = req.header[11];
+	    req.size[3] = req.header[12];*/
+	    //memcpy(req.size,req.header+9,5);
+	    //req.header[11] = 0x03;
+	    req.size = (unsigned int)req.header[11] * 256 + (unsigned int)req.header[12];
+	    if((unsigned int)req.header[10]>0){
+		printf("STOOOOOOPP IT");
+	       	exit (EXIT_FAILURE);
+   	    }
+	    std::cout<<"PUTAIN : "<<req.size<<endl;
+	    memcpy(req.request, l_bufferFrames.back()+13, req.size);
+	    CQLtoSQL(req.request);
+	    // std::cout<<req.size[0]<<" "<<req.size[1]<<" "<<req.size[2]<<req.size[3];
+	    //printf("Size :??? %x\r\n",req.size[3]);
+
+	    //string test2 = std::string(req.size);
+	    //int ok = (int)req.size;
+	    //cout<<req.header[13]<<endl;
+	    //cout<<endl<<test2<<endl;
+	    //std::string ss = req.size;
+	    //unsigned int x = std::stoul(ss, nullptr, 16);
+	    //cout<<"X : "<<x<<endl;
+	    //char test[4];
+ 	    //memcpy(test, l_bufferFrames.back()+9, 4);
+	    /*unsigned int val;
+	    std::stringstream ss;
+	    ss<<std::hex<<req.size;
+	    ss>>val;
+	    std::cout<<"Val :"<<val<<endl;*/
+//	    memcpy(req.request, l_bufferFrames.back()+12,req.size);
+            //printf("Size : %d\r\n", req.size);
+            printf("Request : %s\r\n", req.request);
+            //printf("Opcode : %x", req.opcode);
+	    //l_bufferRequests.push_front(req);
+	    //cout<<"OK"<<endl;
+            //cout<<req.Request<<endl;
+	    l_bufferFrames.pop_back();
+            cout<<"List buff : "<<l_bufferFrames.size()<<endl;
 	    printf("Pop\r\n");
         }
     }
@@ -88,8 +148,15 @@ void TraitementFrameData(){
 void TraitementRequests(){
     while(1){
         if(l_bufferRequests.size()>0){
-            CQLtoSQL(l_bufferRequests.back().Request);
-            l_bufferFrames.pop_back();
+	    printf("3\r\n");
+	    string test = std::string(l_bufferRequests.back().Request);
+	    //string test2;
+	    //strcpy(test2, test);
+	    l_bufferRequests.back().Request = "";
+	    l_bufferFrames.pop_back(); 
+//   printf("%s\r\n", test);
+            //CQLtoSQL(test);
+            //l_bufferFrames.pop_back();
 	        printf("Pop\r\n");
         }
     }
@@ -419,7 +486,7 @@ vector<string> extract_values_data(string _values_clause)
     return returned_vector;
 }
 
-string extract_delete_data(string _delete_clause)
+string extract_delete_data(string &_delete_clause)
 {
     string delete_clause_data = _delete_clause.substr(12, std::string::npos);
 
@@ -443,13 +510,13 @@ string CQLtoSQL(string _incoming_cql_query)
     size_t select_sub_pos, from_sub_pos, where_sub_pos, limit_sub_pos, update_sub_pos, set_sub_pos, insert_into_sub_pos, values_sub_pos, delete_sub_pos = 0;
 
     string select_clause, from_clause, where_clause, update_clause, set_clause, insert_into_clause, values_clause, delete_clause = "";
-
+    
     string table, key = "";
     vector<string> fields, values, columns;
 
     //On crée un objet du type de la requête CQL entrante
     //Si requête SELECT:
-    if (_incoming_cql_query.find("SELECT ") != std::string::npos)
+    /*if (_incoming_cql_query.find("SELECT ") != std::string::npos)
     {
         cout << "Type de la requete : SELECT" << endl;
         select_sub_pos = _incoming_cql_query.find(select_clauses[0]);
@@ -477,6 +544,40 @@ string CQLtoSQL(string _incoming_cql_query)
 
         //Appel de la fonction de conversion pour du RWCS
         return create_select_sql_query(table, key, fields);
+    }*/
+    //cout<<_incoming_cql_query.substr(0,5)<<endl;
+    //cout<<_incoming_cql_query<<endl;
+    if (_incoming_cql_query.substr(0, 6) == "SELECT" || _incoming_cql_query.substr(0, 6) == "select")
+    {
+        cout << "Type de la requete : SELECT" << endl;
+        //select_sub_pos = _incoming_cql_query.find(select_clauses[0]);
+        from_sub_pos = _incoming_cql_query.find(select_clauses[1]);
+        where_sub_pos = _incoming_cql_query.find(select_clauses[2]);
+        limit_sub_pos = _incoming_cql_query.find(select_clauses[3]);
+        //printf("Pos limit : %d\r\n", limit_sub_pos);
+            //On génère les clauses de la requête
+            select_clause = _incoming_cql_query.substr(6, from_sub_pos-6);
+            table = _incoming_cql_query.substr(from_sub_pos+4, where_sub_pos-from_sub_pos-4);
+            key = _incoming_cql_query.substr(where_sub_pos+5, limit_sub_pos+where_sub_pos-5);
+            //On extrait les paramètres des clauses
+            //cout<<"Pos limit : "<<select_clause<<endl;
+	    //cout<<"Pos limit : "<<from_clause<<endl;
+	    //cout<<"Pos limit : "<<where_clause<<endl;
+	    //table = from_clause;
+            //key = where_clause;
+            fields = extract_select_data(select_clause);
+	    //fields = select_clause;
+
+        //Affichage des paramètres
+        cout << "Table: " << table << " - Key: " << key << " Fields : ";
+        for (string field : fields)
+        {
+            cout << field << " __ ";
+        }
+        cout << endl;
+
+        //Appel de la fonction de conversion pour du RWCS
+        return "ok"; /*create_select_sql_query(table, key, fields);*/
     }
 
     //Si requête UPDATE:
@@ -547,7 +648,7 @@ string CQLtoSQL(string _incoming_cql_query)
             delete_clause = _incoming_cql_query.substr(delete_sub_pos, where_sub_pos - delete_sub_pos);
             where_clause = _incoming_cql_query.substr(where_sub_pos, std::string::npos);
                 //On extrait les paramètres des clauses
-                table = extract_delete_data(delete_clause);
+//                table = extract_delete_data(delete_clause);
                 key = extract_where_data(where_clause);
                 
         //Affichage des paramètres

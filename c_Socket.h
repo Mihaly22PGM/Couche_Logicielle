@@ -13,11 +13,11 @@ extern char buffClient[1024];
 struct Request{
     char RequestNumber[2];
     char RequestOpcode;
-    char Request[1024];
+    char *Request;
 };
 
 extern struct sockaddr_in serv_addr; 
 
 extern void INITSocket();
 extern void TraitementFrameClient();
-extern Request TraitementFrameDataClient(char[10240]);
+extern Request TraitementFrameDataClient(const char[1024]);
