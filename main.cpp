@@ -25,6 +25,7 @@ typedef int SOCKET;
 
 #pragma region DeleteForProd
 string const nomFichier("/home/tfe_rwcs/Couche_Logicielle/Request.log");
+ofstream fichier(nomFichier.c_str());
 #pragma endregion DeleteForProd
 
 #pragma region Structures
@@ -69,6 +70,7 @@ string CQLtoSQL(string _incoming_cql_query);
 
 int main(int argc, char *argv[])
 { 
+    //ofstream fichier(nomFichier.c_str());	//DEBUG
     INITSocket();   //Sockets creation
 
     //Starting threads for sockets
@@ -80,11 +82,6 @@ int main(int argc, char *argv[])
         sockServer = recv(sockDataClient, buffData, sizeof(buffData),0);
         if(sockServer > 0){
             l_bufferFrames.push_front(buffData);
-            printf("\r\n");
-            printf("Pushed\r\n");
-            printf("Size buff : %d\r\n", sizeof(buffData));
-            printf("Size Buff List : %d \r\n", sizeof(l_bufferFrames.front()));
-            printf("Longueur de liste : %d \r\n", l_bufferFrames.size());
         }
     }
     //Stop the threads
@@ -101,6 +98,7 @@ void TraitementFrameData(){
     while(1){
         if(l_bufferFrames.size()>0){
             bl_lastRequestFrame = false;
+	    sommeSize = 0;
             while(bl_lastRequestFrame == false){
                 memcpy(header,l_bufferFrames.back()+sommeSize,13);	    
                 s_Requests.size = (unsigned int)header[11+sommeSize] * 256 + (unsigned int)header[12+sommeSize];
@@ -115,7 +113,6 @@ void TraitementFrameData(){
                 if (sizeof(l_bufferFrames.back()) <= sommeSize){
                     bl_lastRequestFrame = true;
                 }
-                ofstream fichier(nomFichier.c_str());
                 if (fichier){
                     fichier<<"------------Decoupage Requete------------"<<endl;
                     fichier<<"Stream : "<<s_Requests.opcode<<endl;
@@ -127,7 +124,6 @@ void TraitementFrameData(){
                 l_bufferRequests.push_front(s_Requests);
                 memset(s_Requests.request,0,s_Requests.size);
                 l_bufferFrames.pop_back();
-                //TODO reset with 0 values
             }
         }
     }
@@ -137,7 +133,7 @@ void TraitementRequests(){
     while(1){
         if(l_bufferRequests.size()>0){
         CQLtoSQL(l_bufferRequests.back().request);
-	    l_bufferFrames.pop_back(); 
+	    l_bufferRequests.pop_back(); 
         }
     }
 }

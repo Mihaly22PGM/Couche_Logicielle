@@ -2842,16 +2842,17 @@ unsigned char f_connexion[][15000] = {
 #pragma region Fonctions
 
 void INITSocket(){
+    //printf("%d\r\n", /*AF_INET*/inet_addr("192.168.82.61"));
     sockServer = socket(AF_INET, SOCK_STREAM, 0);
     memset(&serv_addr, '0', sizeof(serv_addr));
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serv_addr.sin_port = htons(portClients); 
+    serv_addr.sin_port = htons(portClients);
 
-    bind(sockServer, (struct sockaddr*)&serv_addr, sizeof(serv_addr)); 
+    bind(sockServer, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 
-    listen(sockServer, 10); 
+    listen(sockServer, 10);
 
     sockClient = accept(sockServer, (struct sockaddr*)NULL,NULL);
     int i = 0;
@@ -2893,24 +2894,24 @@ void TraitementFrameClient(){
 		}
     }
 }
-
+/*
 Request TraitementFrameDataClient(const char* bodyFrame){  
-	printf("HERE\r\n");
-	printf("%s", *bodyFrame);
+	//printf("HERE\r\n");
+	//printf("%s", *bodyFrame);
 	if(bodyFrame[4] == '\x07'){
 		//printf("Taille buffer : %d", sizeof(bodyFrame));	//DEBUG
-		printf("%d\r\n", sizeof(bodyFrame));
-		/*for (int i = 9; i<sizeof(bodyFrame); i++){
+		//printf("%d\r\n", sizeof(bodyFrame));
+		for (int i = 9; i<sizeof(bodyFrame); i++){
 			printf("%c", bodyFrame[i]);
-		}*/
+		}
 		//printf("%s\r\n", *bodyFrame);
 		s_Request.RequestNumber[0] = bodyFrame[2];
 		s_Request.RequestNumber[1] = bodyFrame[3];
 		//s_Request.RequestNumber = (bodyFrame[2]<<8)|(bodyFrame[3]);
-		printf("%s",s_Request.RequestNumber);
+		//printf("%s",s_Request.RequestNumber);
 		s_Request.RequestOpcode = bodyFrame[4];
 		RequestSize = (bodyFrame[9]<<24)|(bodyFrame[10]<<16)|(bodyFrame[11]<<8)|(bodyFrame[12]);
-		printf("%d",RequestSize);
+		//printf("%d",RequestSize);
 		strncpy(s_Request.Request, bodyFrame+13, RequestSize);
 		printf("2\r\n");
 		return s_Request;
@@ -2931,7 +2932,7 @@ Request TraitementFrameDataClient(const char* bodyFrame){
 	else{
 		printf("Opcode non reconnu, opcode : %x\r\n", bodyFrame[4]);
 	}
-}
+}*/
 
 #pragma endregion Fonctions
 
