@@ -16,27 +16,35 @@
 //Debug libraries
 #include <iostream>
 #include <time.h>
+#include <fstream>
 
 using namespace std;
 using std::string;
 
 typedef int SOCKET;
-#pragma region Global
-char buffData[1024];
-std::list<char*> l_bufferFrames;
-//Request req;
-std::list<Request> l_bufferRequests;
+
+#pragma region DeleteForProd
+string const nomFichier("/home/tfe_rwcs/Couche_Logicielle/Request.log");
+#pragma endregion DeleteForProd
+
+#pragma region Structures
 struct Requests{
-    char header[12];
-    char opcode;
-    long int size;
+    char opcode[1];
+    char stream[2];
+    unsigned long int size;
     char request[1024];
 };
-Requests req;
+#pragma endregion Structures
 
-
+#pragma region Global
+Requests s_Requests;
+char buffData[1024];
+char header[12];
+std::list<char*> l_bufferFrames;
+std::list<Requests> l_bufferRequests;
 string incoming_cql_query;
 string translated_sql_query;
+bool bl_lastRequestFrame = false;
 #pragma endregion Global
 
 #pragma region Prototypes
@@ -63,84 +71,64 @@ int main(int argc, char *argv[])
 { 
     INITSocket();   //Sockets creation
 
-        //Starting threads for sockets
-        std::thread th_FrameClient(TraitementFrameClient);
-        std::thread th_FrameData(TraitementFrameData);
-        std::thread th_Requests(TraitementRequests);
-        while(1){
-            sockServer = 0;
-            sockServer = recv(sockDataClient, buffData, sizeof(buffData),0);
-            if(sockServer > 0){
-                l_bufferFrames.push_front(buffData);
-                printf("\r\n");
-                printf("Pushed\r\n");
-		printf("Size buff : %d\r\n", sizeof(buffData));
-		printf("Size Buff List : %d \r\n", sizeof(l_bufferFrames.front()));
-                printf("Longueur de liste : %d \r\n", l_bufferFrames.size());
-	        }
+    //Starting threads for sockets
+    std::thread th_FrameClient(TraitementFrameClient);
+    std::thread th_FrameData(TraitementFrameData);
+    std::thread th_Requests(TraitementRequests);
+    while(1){
+        sockServer = 0;
+        sockServer = recv(sockDataClient, buffData, sizeof(buffData),0);
+        if(sockServer > 0){
+            l_bufferFrames.push_front(buffData);
+            printf("\r\n");
+            printf("Pushed\r\n");
+            printf("Size buff : %d\r\n", sizeof(buffData));
+            printf("Size Buff List : %d \r\n", sizeof(l_bufferFrames.front()));
+            printf("Longueur de liste : %d \r\n", l_bufferFrames.size());
         }
-        //Stop the threads
-	th_Requests.join();
-        th_FrameClient.join();
-        th_FrameData.join();
+    }
+    //Stop the threads
+    th_Requests.join();
+    th_FrameClient.join();
+    th_FrameData.join();
     
     return 0;
 }
 
 #pragma region FonctionsThreads
 void TraitementFrameData(){
+    unsigned long int sommeSize = 0;
     while(1){
-	//cout<<"BuffSize : "<<l_bufferRequests.size()<<endl;
         if(l_bufferFrames.size()>0){
-	    //TraitementFrameDataClient(l_bufferFrames.back());
-            memcpy(req.header,l_bufferFrames.back(),13);
-            //req.header[11] = 0x03;
-	    for(int i=0; i<13; i++){
-		printf("%d ", req.header[i]);}
-	    //std::cout<<std::dec<<req.header[i]<< " ";}
-	    //req.opcode = req.header[4];
-            //req.size = req.header;
-            /*req.size[0] = req.header[9];
-	    req.size[1] = req.header[10];
-	    req.size[2] = req.header[11];
-	    req.size[3] = req.header[12];*/
-	    //memcpy(req.size,req.header+9,5);
-	    //req.header[11] = 0x03;
-	    req.size = (unsigned int)req.header[11] * 256 + (unsigned int)req.header[12];
-	    if((unsigned int)req.header[10]>0){
-		printf("STOOOOOOPP IT");
-	       	exit (EXIT_FAILURE);
-   	    }
-	    std::cout<<"PUTAIN : "<<req.size<<endl;
-	    memcpy(req.request, l_bufferFrames.back()+13, req.size);
-	    CQLtoSQL(req.request);
-	    // std::cout<<req.size[0]<<" "<<req.size[1]<<" "<<req.size[2]<<req.size[3];
-	    //printf("Size :??? %x\r\n",req.size[3]);
-
-	    //string test2 = std::string(req.size);
-	    //int ok = (int)req.size;
-	    //cout<<req.header[13]<<endl;
-	    //cout<<endl<<test2<<endl;
-	    //std::string ss = req.size;
-	    //unsigned int x = std::stoul(ss, nullptr, 16);
-	    //cout<<"X : "<<x<<endl;
-	    //char test[4];
- 	    //memcpy(test, l_bufferFrames.back()+9, 4);
-	    /*unsigned int val;
-	    std::stringstream ss;
-	    ss<<std::hex<<req.size;
-	    ss>>val;
-	    std::cout<<"Val :"<<val<<endl;*/
-//	    memcpy(req.request, l_bufferFrames.back()+12,req.size);
-            //printf("Size : %d\r\n", req.size);
-            printf("Request : %s\r\n", req.request);
-            //printf("Opcode : %x", req.opcode);
-	    //l_bufferRequests.push_front(req);
-	    //cout<<"OK"<<endl;
-            //cout<<req.Request<<endl;
-	    l_bufferFrames.pop_back();
-            cout<<"List buff : "<<l_bufferFrames.size()<<endl;
-	    printf("Pop\r\n");
+            bl_lastRequestFrame = false;
+            while(bl_lastRequestFrame == false){
+                memcpy(header,l_bufferFrames.back()+sommeSize,13);	    
+                s_Requests.size = (unsigned int)header[11+sommeSize] * 256 + (unsigned int)header[12+sommeSize];
+                if((unsigned int)header[10+sommeSize]>0){
+                printf("STOOOOOOPP IT");
+                    exit (EXIT_FAILURE);
+                }
+                memcpy(s_Requests.request, l_bufferFrames.back()+13, s_Requests.size);
+                memcpy(s_Requests.opcode, header+4+sommeSize,1);
+                memcpy(s_Requests.stream, header+2+sommeSize,2);
+                sommeSize += s_Requests.size+16;    //Request size + header size(13) + 3 hex values at the end of the request
+                if (sizeof(l_bufferFrames.back()) <= sommeSize){
+                    bl_lastRequestFrame = true;
+                }
+                ofstream fichier(nomFichier.c_str());
+                if (fichier){
+                    fichier<<"------------Decoupage Requete------------"<<endl;
+                    fichier<<"Stream : "<<s_Requests.opcode<<endl;
+                    fichier<<"Opcode : "<<s_Requests.opcode<<endl;
+                    fichier<<"Taille Requete : "<<s_Requests.size<<endl;
+                    fichier<<"Requete : "<<s_Requests.request<<endl;
+                    fichier<<"-------------------END-------------------"<<endl;
+                }
+                l_bufferRequests.push_front(s_Requests);
+                memset(s_Requests.request,0,s_Requests.size);
+                l_bufferFrames.pop_back();
+                //TODO reset with 0 values
+            }
         }
     }
 }
@@ -148,16 +136,8 @@ void TraitementFrameData(){
 void TraitementRequests(){
     while(1){
         if(l_bufferRequests.size()>0){
-	    printf("3\r\n");
-	    string test = std::string(l_bufferRequests.back().Request);
-	    //string test2;
-	    //strcpy(test2, test);
-	    l_bufferRequests.back().Request = "";
+        CQLtoSQL(l_bufferRequests.back().request);
 	    l_bufferFrames.pop_back(); 
-//   printf("%s\r\n", test);
-            //CQLtoSQL(test);
-            //l_bufferFrames.pop_back();
-	        printf("Pop\r\n");
         }
     }
 }
