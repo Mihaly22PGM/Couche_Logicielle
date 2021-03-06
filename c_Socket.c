@@ -2894,6 +2894,7 @@ void TraitementFrameClient(){
 		}
     }
 }
+
 /*
 Request TraitementFrameDataClient(const char* bodyFrame){  
 	//printf("HERE\r\n");

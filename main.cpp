@@ -1,4 +1,5 @@
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -26,6 +27,10 @@ typedef int SOCKET;
 #pragma region DeleteForProd
 string const nomFichier("/home/tfe_rwcs/Couche_Logicielle/Request.log");
 ofstream fichier(nomFichier.c_str());
+char date[9];
+time_t t = time(0);
+struct tm *timestamp;
+void logs(const char *msg);
 #pragma endregion DeleteForProd
 
 #pragma region Structures
@@ -35,6 +40,8 @@ struct Requests{
     unsigned long int size;
     char request[1024];
 };
+struct sockaddr_un s_PGSQL_addr;
+
 #pragma endregion Structures
 
 #pragma region Global
@@ -43,14 +50,20 @@ char buffData[1024];
 char header[12];
 std::list<char*> l_bufferFrames;
 std::list<Requests> l_bufferRequests;
-string incoming_cql_query;
-string translated_sql_query;
+std::list<std::string> l_bufferPGSQLRequests;
+std::string incoming_cql_query;
+std::string translated_sql_query;
 bool bl_lastRequestFrame = false;
+SOCKET sockPGSQL;
+
 #pragma endregion Global
 
 #pragma region Prototypes
 void TraitementFrameData();
 void TraitementRequests();
+void ConnexionPGSQL();
+void SendPGSQL();
+void exit_prog(int CodeEXIT);
 string create_select_sql_query(string _table, string _key, vector<string> _fields);
 string create_update_sql_query(string _table, string _key, vector<string> _values);
 string create_insert_sql_query(string _table, string _key, vector<string> _columns,  vector<string> _values);
@@ -65,7 +78,6 @@ vector<string> extract_insert_into_data_columns(string _insert_into_clause);
 vector<string> extract_values_data(string _values_clause);
 string extract_delete_data(string _delete_clause);
 string CQLtoSQL(string _incoming_cql_query);
-
 #pragma endregion Prototypes
 
 int main(int argc, char *argv[])
@@ -74,9 +86,10 @@ int main(int argc, char *argv[])
     INITSocket();   //Sockets creation
 
     //Starting threads for sockets
-    std::thread th_FrameClient(TraitementFrameClient);
+    std::thread th_FrameClient(TraitementFrameClient);  //TODO déclarer les threads en global
     std::thread th_FrameData(TraitementFrameData);
     std::thread th_Requests(TraitementRequests);
+    std::thread th_PostgreSQL(ConnexionPGSQL);
     while(1){
         sockServer = 0;
         sockServer = recv(sockDataClient, buffData, sizeof(buffData),0);
@@ -84,8 +97,9 @@ int main(int argc, char *argv[])
             l_bufferFrames.push_front(buffData);
         }
     }
+
     //Stop the threads
-    th_Requests.join();
+    th_Requests.join();     //TODO create function exit prog to call the stop threads function
     th_FrameClient.join();
     th_FrameData.join();
     
@@ -132,10 +146,55 @@ void TraitementFrameData(){
 void TraitementRequests(){
     while(1){
         if(l_bufferRequests.size()>0){
-        CQLtoSQL(l_bufferRequests.back().request);
+        translated_sql_query = CQLtoSQL(l_bufferRequests.back().request);
 	    l_bufferRequests.pop_back(); 
+        l_bufferPGSQLRequests.push_front(translated_sql_query);
         }
     }
+}
+
+void ConnexionPGSQL(){
+    int servlen;
+    bzero((char *)&serv_addr,sizeof(serv_addr));
+    s_PGSQL_addr.sun_family = AF_UNIX;
+    strcpy(s_PGSQL_addr.sun_path, "/run/postgresql/");
+    servlen = strlen(s_PGSQL_addr.sun_path) + sizeof(s_PGSQL_addr.sun_family);
+    if ((sockPGSQL = socket(AF_UNIX, SOCK_STREAM,0)) < 0){
+       logs("ConnexionPGSQL() : Creating socket");
+       exit_prog(EXIT_FAILURE);
+    }
+    else{
+        logs("ConnexionPGSQL() : Socket OK");
+    }
+    if (connect(sockPGSQL, (struct sockaddr *) &serv_addr, servlen) < 0){
+       logs("ConnexionPGSQL() : Connecting");
+       exit(EXIT_FAILURE);
+    }
+    else{
+        logs("Connexion() : Connexion OK");
+    }
+    SendPGSQL();
+}
+
+void SendPGSQL(){
+    while(1){
+        if(l_bufferPGSQLRequests.size() > 0){
+            cout<<"Request SQL : "<<l_bufferPGSQLRequests.back()<<endl;
+            l_bufferPGSQLRequests.pop_back();
+        }
+    }
+}
+void logs(const char *msg)
+{
+    timestamp = gmtime(&t);
+    strftime(date, sizeof(date), "%Y%m%d_%H:%M:%S", timestamp);
+    printf("log.%s\n", date);
+    perror(msg);
+}
+
+void exit_prog(int codeEXIT){
+    //TODO kill thread here and leave prog
+    exit(codeEXIT);
 }
 #pragma endregion FonctionsThreads
 
@@ -490,25 +549,19 @@ string CQLtoSQL(string _incoming_cql_query)
     string table, key = "";
     vector<string> fields, values, columns;
 
-    //On crée un objet du type de la requête CQL entrante
-    //Si requête SELECT:
-    /*if (_incoming_cql_query.find("SELECT ") != std::string::npos)
+
+    if (_incoming_cql_query.substr(0, 6) == "SELECT" || _incoming_cql_query.substr(0, 6) == "select")
     {
         cout << "Type de la requete : SELECT" << endl;
-        select_sub_pos = _incoming_cql_query.find(select_clauses[0]);
         from_sub_pos = _incoming_cql_query.find(select_clauses[1]);
         where_sub_pos = _incoming_cql_query.find(select_clauses[2]);
         limit_sub_pos = _incoming_cql_query.find(select_clauses[3]);
-
-            //On génère les clauses de la requête
-            select_clause = _incoming_cql_query.substr(select_sub_pos, from_sub_pos - select_sub_pos);
-            from_clause = _incoming_cql_query.substr(from_sub_pos, where_sub_pos - from_sub_pos);
-            where_clause = _incoming_cql_query.substr(where_sub_pos, limit_sub_pos - where_sub_pos);
-
-                //On extrait les paramètres des clauses
-                table = extract_from_data(from_clause);
-                key = extract_where_data(where_clause);
-                fields = extract_select_data(select_clause);
+        
+        //On génère les clauses de la requête
+        select_clause = _incoming_cql_query.substr(6, from_sub_pos-6);
+        table = _incoming_cql_query.substr(from_sub_pos+4, where_sub_pos-from_sub_pos-4);
+        key = _incoming_cql_query.substr(where_sub_pos+5, limit_sub_pos+where_sub_pos-5);
+        fields = extract_select_data(select_clause);
 
         //Affichage des paramètres
         cout << "Table: " << table << " - Key: " << key << " Fields : ";
@@ -520,40 +573,6 @@ string CQLtoSQL(string _incoming_cql_query)
 
         //Appel de la fonction de conversion pour du RWCS
         return create_select_sql_query(table, key, fields);
-    }*/
-    //cout<<_incoming_cql_query.substr(0,5)<<endl;
-    //cout<<_incoming_cql_query<<endl;
-    if (_incoming_cql_query.substr(0, 6) == "SELECT" || _incoming_cql_query.substr(0, 6) == "select")
-    {
-        cout << "Type de la requete : SELECT" << endl;
-        //select_sub_pos = _incoming_cql_query.find(select_clauses[0]);
-        from_sub_pos = _incoming_cql_query.find(select_clauses[1]);
-        where_sub_pos = _incoming_cql_query.find(select_clauses[2]);
-        limit_sub_pos = _incoming_cql_query.find(select_clauses[3]);
-        //printf("Pos limit : %d\r\n", limit_sub_pos);
-            //On génère les clauses de la requête
-            select_clause = _incoming_cql_query.substr(6, from_sub_pos-6);
-            table = _incoming_cql_query.substr(from_sub_pos+4, where_sub_pos-from_sub_pos-4);
-            key = _incoming_cql_query.substr(where_sub_pos+5, limit_sub_pos+where_sub_pos-5);
-            //On extrait les paramètres des clauses
-            //cout<<"Pos limit : "<<select_clause<<endl;
-	    //cout<<"Pos limit : "<<from_clause<<endl;
-	    //cout<<"Pos limit : "<<where_clause<<endl;
-	    //table = from_clause;
-            //key = where_clause;
-            fields = extract_select_data(select_clause);
-	    //fields = select_clause;
-
-        //Affichage des paramètres
-        cout << "Table: " << table << " - Key: " << key << " Fields : ";
-        for (string field : fields)
-        {
-            cout << field << " __ ";
-        }
-        cout << endl;
-
-        //Appel de la fonction de conversion pour du RWCS
-        return "ok"; /*create_select_sql_query(table, key, fields);*/
     }
 
     //Si requête UPDATE:
