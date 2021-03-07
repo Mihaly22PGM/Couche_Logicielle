@@ -13,6 +13,7 @@
 #include "c_Socket.h"
 #include <string.h>
 #include <algorithm>
+#include <libpq-fe.h>
 
 //Debug libraries
 #include <iostream>
@@ -59,6 +60,7 @@ SOCKET sockPGSQL;
 #pragma endregion Global
 
 #pragma region Prototypes
+static void exit_nicely(PGconn *conn);
 void TraitementFrameData();
 void TraitementRequests();
 void ConnexionPGSQL();
@@ -154,10 +156,10 @@ void TraitementRequests(){
 }
 
 void ConnexionPGSQL(){
-    int servlen;
-    bzero((char *)&serv_addr,sizeof(serv_addr));
+    /*int servlen;
+    bzero((char *)&s_PGSQL_addr,sizeof(s_PGSQL_addr));
     s_PGSQL_addr.sun_family = AF_UNIX;
-    strcpy(s_PGSQL_addr.sun_path, "/run/postgresql/");
+    strcpy(s_PGSQL_addr.sun_path, "/tmp/");
     servlen = strlen(s_PGSQL_addr.sun_path) + sizeof(s_PGSQL_addr.sun_family);
     if ((sockPGSQL = socket(AF_UNIX, SOCK_STREAM,0)) < 0){
        logs("ConnexionPGSQL() : Creating socket");
@@ -166,14 +168,37 @@ void ConnexionPGSQL(){
     else{
         logs("ConnexionPGSQL() : Socket OK");
     }
-    if (connect(sockPGSQL, (struct sockaddr *) &serv_addr, servlen) < 0){
+    if (connect(sockPGSQL, (struct sockaddr *) &s_PGSQL_addr, servlen) < 0){
        logs("ConnexionPGSQL() : Connecting");
        exit(EXIT_FAILURE);
     }
     else{
         logs("Connexion() : Connexion OK");
     }
-    SendPGSQL();
+    SendPGSQL();*/
+    const char *conninfo;
+    PGconn     *conn;
+    PGresult   *res;
+    PGnotify   *notify;
+    int         nnotifies;
+    conninfo = "user = postgres";
+    conn = PQconnectdb(conninfo);
+    /* Check to see that the backend connection was successfully made */
+    if (PQstatus(conn) != CONNECTION_OK)
+    {
+        fprintf(stderr, "Connection to database failed: %s", PQerrorMessage(conn));
+        exit_nicely(conn);
+    }
+
+    /* Set always-secure search path, so malicious users can't take control. */
+    res = PQexec(conn,
+                 "SELECT pg_catalog.set_config('search_path', '', false)");
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+    {
+        fprintf(stderr, "SET failed: %s", PQerrorMessage(conn));
+        PQclear(res);
+        exit_nicely(conn);
+    }
 }
 
 void SendPGSQL(){
@@ -184,6 +209,13 @@ void SendPGSQL(){
         }
     }
 }
+
+static void exit_nicely(PGconn *conn)
+{
+    PQfinish(conn);
+    exit(1);
+}
+
 void logs(const char *msg)
 {
     timestamp = gmtime(&t);

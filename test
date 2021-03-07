@@ -1,0 +1,2 @@
+g++ -g -Wall -o CoucheLogicielle main.cpp c_Socket.c -I. -I/usr/include/postgresql -L. -L/usr/include/postgresql  -lpq -pthread -std=c++11
+Makefile:38: recipe for target 'CoucheLogicielle' failed
