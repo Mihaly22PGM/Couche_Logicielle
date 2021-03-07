@@ -7,17 +7,20 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <thread>
+// #include <thread>
+#include <pthread.h>
 #include <list>
 #include <vector>
-#include "c_Socket.h"
 #include <string.h>
 #include <algorithm>
-#include <libpq-fe.h>
+#include "c_Socket.h"
+#include "libpq-fe.h"
+#include <future>
 
 //Debug libraries
 #include <iostream>
 #include <time.h>
+#include <chrono>
 #include <fstream>
 
 using namespace std;
@@ -35,6 +38,9 @@ void logs(const char *msg);
 #pragma endregion DeleteForProd
 
 #pragma region Structures
+struct ThreadsInfos{
+
+};
 struct Requests{
     char opcode[1];
     char stream[2];
@@ -57,15 +63,21 @@ std::string translated_sql_query;
 bool bl_lastRequestFrame = false;
 SOCKET sockPGSQL;
 
+pthread_t th_FrameClient;
+pthread_t th_FrameData;
+pthread_t th_Requests;
+pthread_t th_PostgreSQL;
+
 #pragma endregion Global
 
 #pragma region Prototypes
-static void exit_nicely(PGconn *conn);
-void TraitementFrameData();
-void TraitementRequests();
-void ConnexionPGSQL();
+void *TraitementFrameData(void*);
+void *TraitementRequests(void*);
+void *ConnexionPGSQL(void*);
 void SendPGSQL();
 void exit_prog(int CodeEXIT);
+void logs(const char *msg);
+// void printTimestamp(string text, std::chrono::system_clock clock);
 string create_select_sql_query(string _table, string _key, vector<string> _fields);
 string create_update_sql_query(string _table, string _key, vector<string> _values);
 string create_insert_sql_query(string _table, string _key, vector<string> _columns,  vector<string> _values);
@@ -83,15 +95,33 @@ string CQLtoSQL(string _incoming_cql_query);
 #pragma endregion Prototypes
 
 int main(int argc, char *argv[])
-{ 
-    //ofstream fichier(nomFichier.c_str());	//DEBUG
+{
+    // auto start = chrono::system_clock::(std::chrono::system_clock::now());
+    // std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+    // std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+    // std::tm now_tm = *std::localtime(&now_c);
+    // strftime(now_tm, );    
+    //printTimestamp("Starting Program", to_string(millisec_since_epoch));
+    int CheckThreadCreation = 0;
     INITSocket();   //Sockets creation
 
     //Starting threads for sockets
-    std::thread th_FrameClient(TraitementFrameClient);  //TODO déclarer les threads en global
-    std::thread th_FrameData(TraitementFrameData);
-    std::thread th_Requests(TraitementRequests);
-    std::thread th_PostgreSQL(ConnexionPGSQL);
+    CheckThreadCreation += pthread_create(&th_FrameClient, NULL, TraitementFrameClient, NULL);
+    CheckThreadCreation += pthread_create(&th_FrameData, NULL, TraitementFrameData, NULL);
+    CheckThreadCreation += pthread_create(&th_Requests, NULL, TraitementRequests, NULL);
+    CheckThreadCreation += pthread_create(&th_PostgreSQL, NULL, ConnexionPGSQL, NULL);
+    
+    //Check if threads have been created
+    if (CheckThreadCreation !=0){
+        logs("main() : Error while creating threads, abording");
+        exit_prog(EXIT_FAILURE);
+    }
+    // std::thread th_FrameClient(TraitementFrameClient);  //TODO déclarer les threads en global
+    // std::thread th_FrameData(TraitementFrameData);
+    // std::thread th_Requests(TraitementRequests);
+    // std::thread th_PostgreSQL(ConnexionPGSQL);
+    
+    //Réception des frames en continu et mise en buffer
     while(1){
         sockServer = 0;
         sockServer = recv(sockDataClient, buffData, sizeof(buffData),0);
@@ -101,26 +131,27 @@ int main(int argc, char *argv[])
     }
 
     //Stop the threads
-    th_Requests.join();     //TODO create function exit prog to call the stop threads function
-    th_FrameClient.join();
-    th_FrameData.join();
-    
-    return 0;
+    // th_Requests.join();     //TODO create function exit prog to call the stop threads function
+    // th_FrameClient.join();
+    // th_FrameData.join();
+    // th_PostgreSQL.join();
+
+    return EXIT_SUCCESS;
 }
 
 #pragma region FonctionsThreads
-void TraitementFrameData(){
+void* TraitementFrameData(void *arg){
     unsigned long int sommeSize = 0;
     while(1){
         if(l_bufferFrames.size()>0){
             bl_lastRequestFrame = false;
-	    sommeSize = 0;
+	        sommeSize = 0;
             while(bl_lastRequestFrame == false){
                 memcpy(header,l_bufferFrames.back()+sommeSize,13);	    
                 s_Requests.size = (unsigned int)header[11+sommeSize] * 256 + (unsigned int)header[12+sommeSize];
                 if((unsigned int)header[10+sommeSize]>0){
-                printf("STOOOOOOPP IT");
-                    exit (EXIT_FAILURE);
+                    printf("STOOOOOOPP IT");
+                    exit (EXIT_FAILURE);    //TODO What the hell is this?
                 }
                 memcpy(s_Requests.request, l_bufferFrames.back()+13, s_Requests.size);
                 memcpy(s_Requests.opcode, header+4+sommeSize,1);
@@ -143,90 +174,56 @@ void TraitementFrameData(){
             }
         }
     }
+    pthread_exit(NULL);
 }
 
-void TraitementRequests(){
+void* TraitementRequests(void *arg){
     while(1){
         if(l_bufferRequests.size()>0){
-        translated_sql_query = CQLtoSQL(l_bufferRequests.back().request);
-	    l_bufferRequests.pop_back(); 
-        l_bufferPGSQLRequests.push_front(translated_sql_query);
+            translated_sql_query = CQLtoSQL(l_bufferRequests.back().request);
+            l_bufferRequests.pop_back(); 
+            l_bufferPGSQLRequests.push_front(translated_sql_query);
         }
     }
+    pthread_exit(NULL);
 }
 
-void ConnexionPGSQL(){
-    /*int servlen;
-    bzero((char *)&s_PGSQL_addr,sizeof(s_PGSQL_addr));
-    s_PGSQL_addr.sun_family = AF_UNIX;
-    strcpy(s_PGSQL_addr.sun_path, "/tmp/");
-    servlen = strlen(s_PGSQL_addr.sun_path) + sizeof(s_PGSQL_addr.sun_family);
-    if ((sockPGSQL = socket(AF_UNIX, SOCK_STREAM,0)) < 0){
-       logs("ConnexionPGSQL() : Creating socket");
-       exit_prog(EXIT_FAILURE);
-    }
-    else{
-        logs("ConnexionPGSQL() : Socket OK");
-    }
-    if (connect(sockPGSQL, (struct sockaddr *) &s_PGSQL_addr, servlen) < 0){
-       logs("ConnexionPGSQL() : Connecting");
-       exit(EXIT_FAILURE);
-    }
-    else{
-        logs("Connexion() : Connexion OK");
-    }
-    SendPGSQL();*/
+void* ConnexionPGSQL(void *arg){
     const char *conninfo;
-    PGconn     *conn;
-    PGresult   *res;
-    PGnotify   *notify;
-    int         nnotifies;
+    PGconn *conn;
+    PGresult *res;
+    // PGnotify   *notify;
+    // int         nnotifies;
     conninfo = "user = postgres";
     conn = PQconnectdb(conninfo);
     /* Check to see that the backend connection was successfully made */
     if (PQstatus(conn) != CONNECTION_OK)
     {
         fprintf(stderr, "Connection to database failed: %s", PQerrorMessage(conn));
-        exit_nicely(conn);
+        logs("ConnexionPGSQL() : Connexion to database failed");
+        exit_prog(EXIT_FAILURE);
     }
 
     /* Set always-secure search path, so malicious users can't take control. */
-    res = PQexec(conn,
-                 "SELECT pg_catalog.set_config('search_path', '', false)");
+    res = PQexec(conn, "SELECT pg_catalog.set_config('search_path', '', false)");
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
         fprintf(stderr, "SET failed: %s", PQerrorMessage(conn));
-        PQclear(res);
-        exit_nicely(conn);
+        PQclear(res);   //TODO check what is it?
+        logs("ConnexionPGSQL() : Secure search path error");
+        exit_prog(EXIT_FAILURE); 
     }
+
+    return NULL;
 }
 
-void SendPGSQL(){
+void SendPGSQL(void *arg){
     while(1){
         if(l_bufferPGSQLRequests.size() > 0){
             cout<<"Request SQL : "<<l_bufferPGSQLRequests.back()<<endl;
             l_bufferPGSQLRequests.pop_back();
         }
     }
-}
-
-static void exit_nicely(PGconn *conn)
-{
-    PQfinish(conn);
-    exit(1);
-}
-
-void logs(const char *msg)
-{
-    timestamp = gmtime(&t);
-    strftime(date, sizeof(date), "%Y%m%d_%H:%M:%S", timestamp);
-    printf("log.%s\n", date);
-    perror(msg);
-}
-
-void exit_prog(int codeEXIT){
-    //TODO kill thread here and leave prog
-    exit(codeEXIT);
 }
 #pragma endregion FonctionsThreads
 
@@ -261,13 +258,13 @@ string create_update_sql_query(string _table, string _key, vector<string> _value
     if (_values.size() > 2)
     {
         returned_update_sql_query += "(CASE ";
-        for (int i = 0; i < _values.size(); i = i + 2)
+        for (unsigned int i = 0; i < _values.size(); i = i + 2)
         {
             //On CASE sur chaque colonne CQL, càd chaque valeur que peut prendre la colonne column_name
             returned_update_sql_query += "when column_name = '" + _values[i] + "' then '" + _values[i+1] + "' ";
         }
         returned_update_sql_query += "END) WHERE column_name IN ('";
-        for (int i = 0; i < _values.size(); i = i + 2)
+        for (unsigned int i = 0; i < _values.size(); i = i + 2)
         {
             returned_update_sql_query += _values[i] + "', '";
         }
@@ -285,7 +282,7 @@ string create_insert_sql_query(string _table, string _key, vector<string> _colum
 {
     string returned_insert_sql_query =  "START TRANSACTION; "
                                         "CREATE TABLE " + _key + " (column_name varchar(255), value varchar(255)); ";
-    for (int i = 1; i < _values.size(); i++)
+    for (unsigned int i = 1; i < _values.size(); i++)
     {
         returned_insert_sql_query += "INSERT INTO " + _key + " (column_name, value) VALUES('" + _columns[i] + "', '" + _values[i] + "'); ";
     }
@@ -574,7 +571,7 @@ string CQLtoSQL(string _incoming_cql_query)
     const string delete_clauses[2] = { "DELETE ", "WHERE " };
 
     string select_sub, from_sub, where_sub, update_sub, set_sub, insert_into_sub, values_sub, delete_sub = "";
-    size_t select_sub_pos, from_sub_pos, where_sub_pos, limit_sub_pos, update_sub_pos, set_sub_pos, insert_into_sub_pos, values_sub_pos, delete_sub_pos = 0;
+    size_t from_sub_pos, where_sub_pos, limit_sub_pos, update_sub_pos, set_sub_pos, insert_into_sub_pos, values_sub_pos, delete_sub_pos = 0;
 
     string select_clause, from_clause, where_clause, update_clause, set_clause, insert_into_clause, values_clause, delete_clause = "";
     
@@ -626,7 +623,7 @@ string CQLtoSQL(string _incoming_cql_query)
 
         //Affichage des paramètres
         cout << "Table: " << table << " - Key: " << key << " Fields : ";
-        for (int i = 0; i < values.size(); i = i + 2)
+        for (unsigned int i = 0; i < values.size(); i = i + 2)
         {
             cout << values[i] << " => " << values[i+1] << " __ ";
         }
@@ -655,7 +652,7 @@ string CQLtoSQL(string _incoming_cql_query)
 
         //Affichage des paramètres
         cout << "Table: " << table << " - Key: " << key << " Fields : ";
-        for (int i = 0; i < columns.size(); i++)
+        for (unsigned int i = 0; i < columns.size(); i++)
         {
             cout << columns[i] << " => " << values[i] << " __ ";
         }
@@ -675,7 +672,7 @@ string CQLtoSQL(string _incoming_cql_query)
             delete_clause = _incoming_cql_query.substr(delete_sub_pos, where_sub_pos - delete_sub_pos);
             where_clause = _incoming_cql_query.substr(where_sub_pos, std::string::npos);
                 //On extrait les paramètres des clauses
-//                table = extract_delete_data(delete_clause);
+                //table = extract_delete_data(delete_clause);
                 key = extract_where_data(where_clause);
                 
         //Affichage des paramètres
@@ -684,5 +681,29 @@ string CQLtoSQL(string _incoming_cql_query)
         //Appel de la fonction de conversion pour du RWCS
         return create_delete_sql_query(table, key);
     }
+    else{
+        logs("");
+        exit(EXIT_FAILURE);
+    }
 }
 #pragma endregion CQL_SQL
+
+#pragma region Utils
+// void printTimestamp(string text, std::chrono::system_clock clock){
+//     std::cout<<text<<" : "<<to_string(clock);
+// }
+
+void logs(const char *msg)
+{
+    timestamp = gmtime(&t);
+    strftime(date, sizeof(date), "%Y%m%d_%H:%M:%S", timestamp);
+    printf("log.%s\n", date);
+    perror(msg);
+}
+
+void exit_prog(int codeEXIT){
+
+    exit(codeEXIT);
+}
+
+#pragma endregion Utils

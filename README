@@ -1,0 +1,26 @@
+Follow these steps to use the Relational Wide Colomn Store paradigm
+
+0 - Move to root user (or use sudo with following commands)
+
+1 - Install PostgresSQL
+apt-get install postgresql postgresql-client postgresql-contrib libpq-dev
+
+2 - Allow UNIX Socket for the desired instance
+For this configure the pg_hba.conf file (/etc/postgresql/"version"/"instance"/pg_hba.conf)
+
+3 - Download libpqxx from the repo : https://github.com/jtv/libpqxx
+cd ~
+git clone https://github.com/jtv/libpqxx
+cd libpqxx
+./configure
+make
+make install
+
+4 - Create environnement variables that will be used for libpq++. Refer to 734 page pg12 documentation
+cd ~
+nano .bash_profile
+    export PGHOST=/run/postgresql
+    export PGUSER=postgres
+    export PGPASSWORD=postgres
+source ~/.bash_profile
+

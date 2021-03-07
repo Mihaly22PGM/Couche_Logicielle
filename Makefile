@@ -10,7 +10,7 @@ COURSE_DIR = /usr/include/postgresql
 CXX = g++
 
 #Additional flags
-CXXFLAGS        = -g -Wall
+CXXFLAGS        = -g -Wall -Wno-unknown-pragmas
 
 CPPFLAGS        = -I. \
                   -I$(COURSE_DIR)
@@ -22,7 +22,7 @@ LDFLAGS         = -L. \
 # For example, -lm links with libm.so, the math library.
 # If you make a library of your own, say, libscandir.a, you have to link it
 # in by adding -lscandir here.
-LDLIBS          = -lpq -pthread -std=c++11
+LDLIBS          = -lpq -lpthread -std=c++11
 
 ###########################################################################
 # Additional rules make should know about in order to compile our files
