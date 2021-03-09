@@ -68,13 +68,19 @@ pthread_t th_FrameData;
 pthread_t th_Requests;
 pthread_t th_PostgreSQL;
 
+const char *conninfo;
+PGconn *conn;
+PGresult *res;
+// PGnotify   *notify;
+// int         nnotifies;
+
 #pragma endregion Global
 
 #pragma region Prototypes
 void *TraitementFrameData(void*);
 void *TraitementRequests(void*);
-void *ConnexionPGSQL(void*);
-void SendPGSQL();
+void ConnexionPGSQL();
+void *SendPGSQL(void*);
 void exit_prog(int CodeEXIT);
 void logs(const char *msg);
 // void printTimestamp(string text, std::chrono::system_clock clock);
@@ -96,30 +102,21 @@ string CQLtoSQL(string _incoming_cql_query);
 
 int main(int argc, char *argv[])
 {
-    // auto start = chrono::system_clock::(std::chrono::system_clock::now());
-    // std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-    // std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-    // std::tm now_tm = *std::localtime(&now_c);
-    // strftime(now_tm, );    
-    //printTimestamp("Starting Program", to_string(millisec_since_epoch));
     int CheckThreadCreation = 0;
     INITSocket();   //Sockets creation
+    ConnexionPGSQL();   //Connexion PGSQL
 
     //Starting threads for sockets
     CheckThreadCreation += pthread_create(&th_FrameClient, NULL, TraitementFrameClient, NULL);
     CheckThreadCreation += pthread_create(&th_FrameData, NULL, TraitementFrameData, NULL);
     CheckThreadCreation += pthread_create(&th_Requests, NULL, TraitementRequests, NULL);
-    CheckThreadCreation += pthread_create(&th_PostgreSQL, NULL, ConnexionPGSQL, NULL);
+    CheckThreadCreation += pthread_create(&th_PostgreSQL, NULL, SendPGSQL, NULL);
     
     //Check if threads have been created
     if (CheckThreadCreation !=0){
         logs("main() : Error while creating threads, abording");
         exit_prog(EXIT_FAILURE);
     }
-    // std::thread th_FrameClient(TraitementFrameClient);  //TODO déclarer les threads en global
-    // std::thread th_FrameData(TraitementFrameData);
-    // std::thread th_Requests(TraitementRequests);
-    // std::thread th_PostgreSQL(ConnexionPGSQL);
     
     //Réception des frames en continu et mise en buffer
     while(1){
@@ -130,16 +127,10 @@ int main(int argc, char *argv[])
         }
     }
 
-    //Stop the threads
-    // th_Requests.join();     //TODO create function exit prog to call the stop threads function
-    // th_FrameClient.join();
-    // th_FrameData.join();
-    // th_PostgreSQL.join();
-
     return EXIT_SUCCESS;
 }
 
-#pragma region FonctionsThreads
+#pragma region Requests
 void* TraitementFrameData(void *arg){
     unsigned long int sommeSize = 0;
     while(1){
@@ -188,12 +179,11 @@ void* TraitementRequests(void *arg){
     pthread_exit(NULL);
 }
 
-void* ConnexionPGSQL(void *arg){
-    const char *conninfo;
-    PGconn *conn;
-    PGresult *res;
-    // PGnotify   *notify;
-    // int         nnotifies;
+#pragma endregion Requests
+
+#pragma region PostgreSQL
+void ConnexionPGSQL(){
+
     conninfo = "user = postgres";
     conn = PQconnectdb(conninfo);
     /* Check to see that the backend connection was successfully made */
@@ -213,19 +203,21 @@ void* ConnexionPGSQL(void *arg){
         logs("ConnexionPGSQL() : Secure search path error");
         exit_prog(EXIT_FAILURE); 
     }
-
-    return NULL;
 }
 
-void SendPGSQL(void *arg){
+void *SendPGSQL(void *arg){
+    PGresult *res;
     while(1){
         if(l_bufferPGSQLRequests.size() > 0){
             cout<<"Request SQL : "<<l_bufferPGSQLRequests.back()<<endl;
+            res = PQexec(conn, l_bufferPGSQLRequests.back().data());
+            std::cout<<"Response : "<<res<<endl;
             l_bufferPGSQLRequests.pop_back();
         }
     }
 }
-#pragma endregion FonctionsThreads
+
+#pragma endregion PostgreSQL
 
 #pragma region CQL_SQL
 string create_select_sql_query(string _table, string _key, vector<string> _fields)
@@ -689,9 +681,6 @@ string CQLtoSQL(string _incoming_cql_query)
 #pragma endregion CQL_SQL
 
 #pragma region Utils
-// void printTimestamp(string text, std::chrono::system_clock clock){
-//     std::cout<<text<<" : "<<to_string(clock);
-// }
 
 void logs(const char *msg)
 {

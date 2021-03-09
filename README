@@ -5,6 +5,7 @@ Follow these steps to use the Relational Wide Colomn Store paradigm
 1 - Install PostgresSQL
 apt-get install postgresql postgresql-client postgresql-contrib libpq-dev
 
+
 2 - Allow UNIX Socket for the desired instance
 For this configure the pg_hba.conf file (/etc/postgresql/"version"/"instance"/pg_hba.conf)
 
