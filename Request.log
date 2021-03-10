@@ -1,0 +1,6 @@
+------------Decoupage Requete------------
+Stream : 
+Opcode : 
+Taille Requete : 60
+Requete : SELECT level, psnid FROM azerty WHERE id = 'dallas' LIMIT 1;
+-------------------END-------------------

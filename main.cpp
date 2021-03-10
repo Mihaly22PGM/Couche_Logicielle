@@ -126,7 +126,6 @@ int main(int argc, char *argv[])
             l_bufferFrames.push_front(buffData);
         }
     }
-
     return EXIT_SUCCESS;
 }
 
@@ -183,7 +182,6 @@ void* TraitementRequests(void *arg){
 
 #pragma region PostgreSQL
 void ConnexionPGSQL(){
-
     conninfo = "user = postgres";
     conn = PQconnectdb(conninfo);
     /* Check to see that the backend connection was successfully made */
@@ -195,7 +193,7 @@ void ConnexionPGSQL(){
     }
 
     /* Set always-secure search path, so malicious users can't take control. */
-    res = PQexec(conn, "SELECT pg_catalog.set_config('search_path', '', false)");
+    res = PQexec(conn, "SELECT pg_catalog.set_config('search_path', 'public', false)");
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
         fprintf(stderr, "SET failed: %s", PQerrorMessage(conn));
@@ -203,16 +201,38 @@ void ConnexionPGSQL(){
         logs("ConnexionPGSQL() : Secure search path error");
         exit_prog(EXIT_FAILURE); 
     }
+    else{
+	      std::cout<<"Connexion PGSQL OKAYYYY"<<endl;
+    }
+    PQclear(res);
 }
 
 void *SendPGSQL(void *arg){
     PGresult *res;
+    string requestPGSQL;
     while(1){
         if(l_bufferPGSQLRequests.size() > 0){
-            cout<<"Request SQL : "<<l_bufferPGSQLRequests.back()<<endl;
-            res = PQexec(conn, l_bufferPGSQLRequests.back().data());
-            std::cout<<"Response : "<<res<<endl;
-            l_bufferPGSQLRequests.pop_back();
+            requestPGSQL = l_bufferPGSQLRequests.back();
+            l_bufferPGSQLRequests.pop_back();      
+            res = PQexec(conn, "SELECT * FROM test;");
+
+    	      if (PQresultStatus(res) == PGRES_TUPLES_OK){
+                //Affichage des En-têtes
+                int nFields = PQnfields(res);
+          	    for (int i = 0; i < nFields; i++)
+          		      printf("%-15s", PQfname(res, i));
+         	      printf("\n\n");
+                //Affichage des résultats
+          	    for (int i = 0; i < PQntuples(res); i++)
+          	    {
+          		      for (int j = 0; j < nFields; j++)
+          		          printf("%-15s", PQgetvalue(res, i, j));
+          		      printf("\n");
+    	          }
+            }
+            else{
+                cout<<"Erreur dans la requête"<<endl;
+            }
         }
     }
 }
@@ -272,13 +292,11 @@ string create_update_sql_query(string _table, string _key, vector<string> _value
 
 string create_insert_sql_query(string _table, string _key, vector<string> _columns,  vector<string> _values)
 {
-    string returned_insert_sql_query =  "START TRANSACTION; "
-                                        "CREATE TABLE " + _key + " (column_name varchar(255), value varchar(255)); ";
+    string returned_insert_sql_query =  "CREATE TABLE " + _key + " (column_name varchar(255), value varchar(255)); ";
     for (unsigned int i = 1; i < _values.size(); i++)
     {
         returned_insert_sql_query += "INSERT INTO " + _key + " (column_name, value) VALUES('" + _columns[i] + "', '" + _values[i] + "'); ";
     }
-    returned_insert_sql_query += "COMMIT;";
 
     return returned_insert_sql_query;
 }
