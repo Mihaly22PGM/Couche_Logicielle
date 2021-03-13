@@ -267,7 +267,7 @@ void create_select_sql_query(string _table, string _key, vector<string> _fields)
     }
     else
         returned_select_sql_query += ";";
-    l_bufferPGSQLRequests.push_front(returned_select_sql_query);
+    //l_bufferPGSQLRequests.push_front(returned_select_sql_query);  //TOADD
     return;
 }
 
@@ -297,17 +297,19 @@ void create_update_sql_query(string _table, string _key, vector<string> _values)
     {
         returned_update_sql_query += "'" + _values[0] + "' WHERE column_name = '" + _values[1] + "';";
     }
-    l_bufferPGSQLRequests.push_front(returned_update_sql_query);
+    // l_bufferPGSQLRequests.push_front(returned_update_sql_query); //TOADD
 }
 
 void create_insert_sql_query(string _table, string _key, vector<string> _columns,  vector<string> _values)
 {
     string returned_insert_sql_query = "CREATE TABLE " + _key + " (column_name varchar(255), value varchar(255)); ";
-    l_bufferPGSQLRequests.push_front(returned_insert_sql_query);
+    cout<<returned_insert_sql_query<<endl;
+    // l_bufferPGSQLRequests.push_front(returned_insert_sql_query); //TOADD
     for (unsigned int i = 1; i < _values.size(); i++)
     {
         returned_insert_sql_query = "INSERT INTO " + _key + " (column_name, value) VALUES('" + _columns[i] + "', '" + _values[i] + "'); ";
-        l_bufferPGSQLRequests.push_front(returned_insert_sql_query);
+        cout<<returned_insert_sql_query<<endl;
+        // l_bufferPGSQLRequests.push_front(returned_insert_sql_query); //TOADD
     }
 
     //return returned_insert_sql_query;
@@ -316,7 +318,7 @@ void create_insert_sql_query(string _table, string _key, vector<string> _columns
 void create_delete_sql_query(string _table, string _key)
 {
     string returned_delete_sql_query = "DROP TABLE " + _key + " ;";
-    l_bufferPGSQLRequests.push_front(returned_delete_sql_query);
+    // l_bufferPGSQLRequests.push_front(returned_delete_sql_query); //TOADD
 }
 
 vector<string> extract_select_data(string _select_clause)
@@ -473,24 +475,23 @@ vector<string> extract_set_data(string _set_clause)
     return returned_vector;
 }
 
-string extract_insert_into_data_table(string _insert_into_clause)
+string extract_insert_into_data_table(string insert_into_clause_data)
 {
-    string insert_into_clause_data = _insert_into_clause.substr(12, _NPOS);
+    // string insert_into_clause_data = _insert_into_clause.substr(0, _NPOS);
 
     insert_into_clause_data = insert_into_clause_data.substr(0, insert_into_clause_data.find("("));
 
-    insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), '('), insert_into_clause_data.end());
-    insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), '\''), insert_into_clause_data.end());
-    insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), ' '), insert_into_clause_data.end());
-    insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), ';'), insert_into_clause_data.end());
-    insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), ')'), insert_into_clause_data.end());
+    // insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), '('), insert_into_clause_data.end());
+    // insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), '\''), insert_into_clause_data.end());
+    // insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), ' '), insert_into_clause_data.end());
+    // insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), ';'), insert_into_clause_data.end());
+    // insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), ')'), insert_into_clause_data.end());
 
     return insert_into_clause_data;
 }
 
-vector<string> extract_insert_into_data_columns(string _insert_into_clause)
+vector<string> extract_insert_into_data_columns(string insert_into_clause_data)
 {
-    string insert_into_clause_data = _insert_into_clause.substr(12, _NPOS);
     vector<string> returned_vector;
 
     size_t pos = 0;
@@ -530,9 +531,9 @@ vector<string> extract_insert_into_data_columns(string _insert_into_clause)
     return returned_vector;
 }
 
-vector<string> extract_values_data(string _values_clause)
+vector<string> extract_values_data(string values_clause_data)
 {
-    string values_clause_data = _values_clause.substr(7, _NPOS);
+    values_clause_data = values_clause_data.substr(6, _NPOS);
     vector<string> returned_vector;
 
     size_t pos = 0;
@@ -692,7 +693,7 @@ void CQLtoSQL(string _incoming_cql_query) //TODO replace by void
                     throw string("Erreur : Missing Clause VALUES in INSERT INTO clause");
             values_sub_pos = LowerRequest.find("values ");
             //Isolate clauses
-            insert_into_clause = _incoming_cql_query.substr(6, values_sub_pos - 6);
+            insert_into_clause = _incoming_cql_query.substr(11, values_sub_pos - 11);
             values_clause = _incoming_cql_query.substr(values_sub_pos, _NPOS);
             //On extrait les paramètres des clauses
             table = extract_insert_into_data_table(insert_into_clause);
