@@ -215,13 +215,12 @@ void ConnexionPGSQL(){
 
 void *SendPGSQL(void *arg){
     PGresult *res;
-    string requestPGSQL;
+    char* requestPGSQL;
     while(1){
         if(l_bufferPGSQLRequests.size() > 0){
-            requestPGSQL = l_bufferPGSQLRequests.back();
+            requestPGSQL = const_cast<char*>(l_bufferPGSQLRequests.back().c_str());
             l_bufferPGSQLRequests.pop_back();      
-            res = PQexec(conn, "SELECT * FROM test;");
-
+            res = PQexec(conn, requestPGSQL);
     	      if (PQresultStatus(res) == PGRES_TUPLES_OK){
                 //Affichage des En-têtes
                 int nFields = PQnfields(res);
@@ -235,9 +234,15 @@ void *SendPGSQL(void *arg){
                         printf("%-15s", PQgetvalue(res, i, j));
                     printf("\n");
     	        }
+                //TODO DELETE PRINT AND SEND TO CASSANDRA RESPONSE
+            }
+            else if(PQresultStatus(res) == PGRES_COMMAND_OK){
+                cout<<"Command OK"<<endl;
+                //TODO SEND TO CASSANDRA OK
             }
             else{
                 cout<<"Erreur dans la requête"<<endl;
+                //TODO SEND TO CASSANDRA NOK
             }
             PQclear(res);
         }
@@ -373,9 +378,9 @@ string extract_from_data(string _form_clause)
     return form_clause_data;
 }
 
-string extract_where_data(string _where_clause)
+string extract_where_data(string where_clause_data)
 {
-    string where_clause_data = _where_clause.substr(6, _NPOS);
+    where_clause_data = where_clause_data.substr(6, _NPOS);
 
     size_t pos = 0;
 
@@ -406,9 +411,9 @@ string extract_update_data(string _update_clause)
     return update_clause_data;
 }
 
-vector<string> extract_set_data(string _set_clause)
+vector<string> extract_set_data(string set_clause_data)
 {
-    string set_clause_data = _set_clause.substr(3, _NPOS);
+    set_clause_data = set_clause_data.substr(3, _NPOS);
     vector<string> returned_vector;
 
     size_t pos = 0;
@@ -656,11 +661,11 @@ void CQLtoSQL(string _incoming_cql_query) //TODO replace by void
             set_sub_pos = LowerRequest.find("set ");
             where_sub_pos = LowerRequest.find("where ");
             //Isolate clauses
-            update_clause = _incoming_cql_query.substr(6, set_sub_pos - 6);
+            table = _incoming_cql_query.substr(6, set_sub_pos - 6);
             set_clause = _incoming_cql_query.substr(set_sub_pos, where_sub_pos - set_sub_pos);
             where_clause = _incoming_cql_query.substr(where_sub_pos, _NPOS);
             //Extract clauses           
-            table = extract_update_data(update_clause);
+            // table = extract_update_data(update_clause);
             key = extract_where_data(where_clause);
             values = extract_set_data(set_clause);
             //Print clauses
