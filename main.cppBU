@@ -23,11 +23,6 @@
 #include <chrono>
 #include <fstream>
 
-//ADDED
-#include <functional>       //...
-#include <ifaddrs.h>
-//ENDADDED
-
 using namespace std;
 using std::string;
 
@@ -84,40 +79,6 @@ const char *conninfo;
 PGconn *conn;
 PGresult *res;
 
-
-//ADD
-struct server                   //...
-{
-    string server_name;
-    int server_id;
-    string server_ip_address;
-};
-
-//Variables
-//int server_count = 6;
-int server_count = 2;
-server actual_server;
-server neighbor_server_1;
-server neighbor_server_2;
-server server_to_redirect;
-int port = 8042;
-std::list<std::string> l_bufferRequestsForActualServer, l_bufferRequestsFromServer;
-int socket_neighbor_1, socket_neighbor_2;
-
-//Liste des serveurs
-server server_A = { "RWCS-vServer1", 0, "192.168.82.55" };
-server server_B = { "RWCS-vServer2", 1, "192.168.82.61" };
-server server_C = { "RWCS-vServer3", 2, "192.168.82.63" };
-server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
-server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
-server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };
-
-//ENDADDED
-
-
-
-
-
 #pragma endregion Global
 
 #pragma region Prototypes
@@ -142,64 +103,19 @@ vector<string> extract_insert_into_data_columns(string _insert_into_clause);
 vector<string> extract_values_data(string _values_clause);
 string extract_delete_data(string _delete_clause);
 void CQLtoSQL(string _incoming_cql_query);
-//ADD
-int string_Hashing(string _key_from_cql_query);
-string get_ip_from_actual_server();
-int connect_to_server(server _server_to_connect, int _port_to_connect);
-void send_to_server(int _socketServer, string _query_to_send);
-void* INITSocket_Redirection(void* arg);
-void* redirecting(void* arg);
-void server_identification();
-string key_extractor(string _incoming_cql_query);
-pthread_t th_Redirecting;
-pthread_t th_INITSocket_Redirection;
-//ENDADD
 #pragma endregion Prototypes
 
 int main(int argc, char *argv[])
 {
     int CheckThreadCreation = 0;
-    //INITSocket();   //Sockets creation
-    
-    //ADDED
-    CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);
-    cout << "INITSocket_Redirection" << endl;
-
-    int a = 0;
-    while (a != 1)
-    {
-        cout << "tape 1 qd la couche logicielle est lancee sur tous les serveurs" << endl;
-        cin >> a;
-        cout << endl;
-    }
-    //ENDADDED
-    
-    
-    
+    INITSocket();   //Sockets creation
     ConnexionPGSQL();   //Connexion PGSQL
 
-    //ADDED    
-    cout << "ConnexionPGSQL" << endl;
-    server_identification();
-    cout << "server_identification" << endl;
-
-    int b = 0;
-    while (b != 1)
-    {
-        cout << "tape 1 qd la redirection est lancee sur tous les serveurs" << endl;
-        cin >> b;
-        cout << endl;
-    }
-    //ENDADDDED
-    
     //Starting threads for sockets
-
+    CheckThreadCreation += pthread_create(&th_FrameClient, NULL, TraitementFrameClient, NULL);
     CheckThreadCreation += pthread_create(&th_FrameData, NULL, TraitementFrameData, NULL);
     CheckThreadCreation += pthread_create(&th_Requests, NULL, TraitementRequests, NULL);
     CheckThreadCreation += pthread_create(&th_PostgreSQL, NULL, SendPGSQL, NULL);
-    //ADDED
-    CheckThreadCreation += pthread_create(&th_Redirecting, NULL, redirecting, NULL);
-    //ENDADDED
     
     //Check if threads have been created
     if (CheckThreadCreation !=0){
@@ -207,22 +123,7 @@ int main(int argc, char *argv[])
         exit_prog(EXIT_FAILURE);
     }
     
-    //ADDED
-    int c = 0;
-    while (c != 1)
-    {
-        cout << "tape 1 qd la redirection est lancee sur tous les serveurs" << endl;
-        cin >> c;
-        cout << endl;
-    }
-
-    cout << "OK" << endl;
-    //ENDADDED
-    
     //Réception des frames en continu et mise en buffer
-    INITSocket();
-    pthread_create(&th_FrameClient, NULL, TraitementFrameClient, NULL);
-    
     while(1){
         sockServer = 0;
         sockServer = recv(sockDataClient, buffData, sizeof(buffData),0);
@@ -319,8 +220,9 @@ void *SendPGSQL(void *arg){
         if(l_bufferPGSQLRequests.size() > 0){
             strcpy(requestPGSQL, l_bufferPGSQLRequests.back().c_str());
             l_bufferPGSQLRequests.pop_back();
-            cout<<requestPGSQL<<endl;
+            cout<<requestPGSQL<<endl;      
             res = PQexec(conn, requestPGSQL);
+
     	      if (PQresultStatus(res) == PGRES_TUPLES_OK){
                 //Affichage des En-têtes
                 int nFields = PQnfields(res);
@@ -334,16 +236,13 @@ void *SendPGSQL(void *arg){
                         printf("%-15s", PQgetvalue(res, i, j));
                     printf("\n");
     	        }
-                //TODO DELETE PRINT AND SEND TO CASSANDRA RESPONSE
             }
             else if(PQresultStatus(res) == PGRES_COMMAND_OK){
                 cout<<"Command OK"<<endl;
-                //TODO SEND TO CASSANDRA OK
             }
             else{
                 cout<<"Erreur dans la requête"<<endl;
-                cout<<PQresultErrorMessage(res);
-                //TODO SEND TO CASSANDRA NOK
+                cout<<PQresultErrorMessage(res)<<endl;
             }
             PQclear(res);
         }
@@ -403,7 +302,7 @@ void create_update_sql_query(string _table, string _key, vector<string> _values)
     {
         returned_update_sql_query += "'" + _values[0] + "' WHERE column_name = '" + _values[1] + "';";
     }
-    l_bufferPGSQLRequests.push_front(returned_update_sql_query);
+    l_bufferPGSQLRequests.push_front(returned_update_sql_query); 
 }
 
 void create_insert_sql_query(string _table, string _key, vector<string> _columns,  vector<string> _values)
@@ -479,9 +378,9 @@ string extract_from_data(string _form_clause)
     return form_clause_data;
 }
 
-string extract_where_data(string where_clause_data)
+string extract_where_data(string _where_clause)
 {
-    where_clause_data = where_clause_data.substr(6, _NPOS);
+    string where_clause_data = _where_clause.substr(6, _NPOS);
 
     size_t pos = 0;
 
@@ -512,9 +411,9 @@ string extract_update_data(string _update_clause)
     return update_clause_data;
 }
 
-vector<string> extract_set_data(string set_clause_data)
+vector<string> extract_set_data(string _set_clause)
 {
-    set_clause_data = set_clause_data.substr(3, _NPOS);
+    string set_clause_data = _set_clause.substr(3, _NPOS);
     vector<string> returned_vector;
 
     size_t pos = 0;
@@ -762,11 +661,11 @@ void CQLtoSQL(string _incoming_cql_query) //TODO replace by void
             set_sub_pos = LowerRequest.find("set ");
             where_sub_pos = LowerRequest.find("where ");
             //Isolate clauses
-            table = _incoming_cql_query.substr(6, set_sub_pos - 6);
+            update_clause = _incoming_cql_query.substr(6, set_sub_pos - 6);
             set_clause = _incoming_cql_query.substr(set_sub_pos, where_sub_pos - set_sub_pos);
             where_clause = _incoming_cql_query.substr(where_sub_pos, _NPOS);
             //Extract clauses           
-            // table = extract_update_data(update_clause);
+            table = extract_update_data(update_clause);
             key = extract_where_data(where_clause);
             values = extract_set_data(set_clause);
             //Print clauses
@@ -834,10 +733,10 @@ void CQLtoSQL(string _incoming_cql_query) //TODO replace by void
                 throw string("Erreur : Missing Clause WHERE in DELETE clause");
             where_sub_pos = LowerRequest.find("where ");
             //On génère les clauses de la requête
-            table = _incoming_cql_query.substr(12, where_sub_pos - 12);
+            delete_clause = _incoming_cql_query.substr(6, where_sub_pos - 6);
             where_clause = _incoming_cql_query.substr(where_sub_pos, _NPOS);
             //On extrait les paramètres des clauses
-            //table = extract_delete_data(delete_clause);
+            table = extract_delete_data(delete_clause);
             key = extract_where_data(where_clause);    
             //Affichage des paramètres
             cout << "Table: " << table << " - Key: " << key << endl;
@@ -877,385 +776,3 @@ void exit_prog(int codeEXIT){
 }
 
 #pragma endregion Utils
-
-
-
-#pragma region Listening
-void* INITSocket_Redirection(void* arg)
-{
-    int socket_for_client, client_connection;
-    struct sockaddr_in address;
-
-    char buffer[1024];
-
-    socket_for_client = socket(AF_INET, SOCK_STREAM, 0);
-    memset(&address, '0', sizeof(address));
-
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_ANY);
-    address.sin_port = htons(port);
-
-    bind(socket_for_client, (struct sockaddr*)&address, sizeof(address));
-
-    listen(socket_for_client, 10);
-
-    client_connection = accept(socket_for_client, (struct sockaddr*)NULL, NULL);
-
-    recv(client_connection, buffer, sizeof(buffer), 0);
-    l_bufferRequestsFromServer.push_front(buffer);
-    cout << endl << buffer << endl;
-
-    return NULL;
-}
-#pragma endregion Listening
-
-
-//ADD (TO END)
-#pragma region Preparation
-void server_identification()
-{
-    if (get_ip_from_actual_server() == server_A.server_ip_address)
-    {
-        actual_server = server_A;
-        neighbor_server_1 = server_B;
-        //neighbor_server_2 = server_F;
-    }
-
-    else if (get_ip_from_actual_server() == server_B.server_ip_address)
-    {
-        actual_server = server_B;
-        neighbor_server_1 = server_A;
-        //neighbor_server_1 = server_C;
-        //neighbor_server_2 = server_A;
-    }
-
-    else if (get_ip_from_actual_server() == server_C.server_ip_address)
-    {
-        actual_server = server_C;
-        neighbor_server_1 = server_D;
-        neighbor_server_2 = server_B;
-    }
-
-    else if (get_ip_from_actual_server() == server_D.server_ip_address)
-    {
-        actual_server = server_D;
-        neighbor_server_1 = server_E;
-        neighbor_server_2 = server_C;
-    }
-
-    else if (get_ip_from_actual_server() == server_E.server_ip_address)
-    {
-        actual_server = server_E;
-        neighbor_server_1 = server_F;
-        neighbor_server_2 = server_D;
-    }
-
-    else if (get_ip_from_actual_server() == server_F.server_ip_address)
-    {
-        actual_server = server_F;
-        neighbor_server_1 = server_A;
-        neighbor_server_2 = server_E;
-    }
-
-    cout << get_ip_from_actual_server() << endl;
-    cout << "Serveur #" << actual_server.server_id << ", Nom : " << actual_server.server_name << ", Adresse IP: " << actual_server.server_ip_address << endl;
-
-    //On crée les connexions permanentes avec les serveurs voisins
-    socket_neighbor_1 = connect_to_server(neighbor_server_1, port);               //...
-    //socket_neighbor_2 = connect_to_server(neighbor_server_2, port);
-}
-
-string get_ip_from_actual_server() {
-    struct ifaddrs* ifAddrStruct = NULL;
-    struct ifaddrs* ifa = NULL;
-    void* tmpAddrPtr = NULL;
-
-    string address;
-
-    getifaddrs(&ifAddrStruct);
-
-    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
-        if (!ifa->ifa_addr)
-            continue;
-
-        if (ifa->ifa_addr->sa_family == AF_INET) // check it is IP4
-        {
-            tmpAddrPtr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
-            char addressBuffer[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
-            if (strcmp(ifa->ifa_name, "eth0") == 0)
-                address = addressBuffer;
-        }
-    }
-    if (ifAddrStruct != NULL)
-        freeifaddrs(ifAddrStruct);
-
-    return address;
-}
-#pragma endregion Preparation
-
-#pragma region Server_connection
-int connect_to_server(server _server_to_connect, int _port_to_connect)
-{
-    int sock_to_server = 0;
-    struct sockaddr_in serv_addr;
-    const char* ip_address = _server_to_connect.server_ip_address.c_str();
-
-    sock_to_server = socket(AF_INET, SOCK_STREAM, 0);
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(_port_to_connect);
-
-    inet_pton(AF_INET, ip_address, &serv_addr.sin_addr);
-    connect(sock_to_server, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-
-    cout << endl << "Connexion etablie avec " << ip_address << endl;
-
-    return sock_to_server;
-}
-
-void send_to_server(int _socketServer, string _query_to_send)
-{
-    const char* cql_query = _query_to_send.c_str();
-
-    send(_socketServer, cql_query, strlen(cql_query), 0);
-    cout << endl << "Incoming query sent" << endl;
-}
-#pragma endregion Server_connection
-
-
-
-#pragma region Redirecting
-void* redirecting(void* arg)
-{
-    while (1)
-    {
-        //On hash la clé extraite de la requête via la fonction string_Hashing()
-        if (l_bufferRequests.size() > 0)
-        {
-            string key_from_cql_query = key_extractor(l_bufferRequests.back().request);
-
-            int hashed_key = string_Hashing(key_from_cql_query);
-            cout << hashed_key << endl;
-
-            //On détermine le serveur vers lequel rediriger
-            int range_id = hashed_key % server_count;
-            cout << range_id << endl;
-
-            if (range_id == server_A.server_id)
-            {
-                server_to_redirect = server_A;
-            }
-            else if (range_id == server_B.server_id)
-            {
-                server_to_redirect = server_B;
-            }
-            else if (range_id == server_C.server_id)
-            {
-                server_to_redirect = server_C;
-            }
-            else if (range_id == server_D.server_id)
-            {
-                server_to_redirect = server_D;
-            }
-            else if (range_id == server_E.server_id)
-            {
-                server_to_redirect = server_E;
-            }
-            else if (range_id == server_F.server_id)
-            {
-                server_to_redirect = server_F;
-            }
-
-            //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
-            if (server_to_redirect.server_id != actual_server.server_id)
-            {
-                //On regarde si on doit rediriger vers un voisin
-                if (server_to_redirect.server_id == neighbor_server_1.server_id)              //...
-                {
-                    cout << "Requete a rediriger vers le voisin " << server_to_redirect.server_name << endl;
-                    send_to_server(socket_neighbor_1, l_bufferRequests.back().request);
-                }
-                /*else if (server_to_redirect.server_id == neighbor_server_2.server_id)
-                {
-                    cout << "Requete a rediriger vers le voisin" << server_to_redirect.server_name << endl;
-                    send_to_server(socket_neighbor_2, l_bufferRequests.back().request);
-                }*/
-                //Si non on crée la connection et on envoie
-                else
-                {
-                    cout << "Requete a rediriger vers " << server_to_redirect.server_name << endl;
-                    send_to_server(connect_to_server(server_to_redirect, port), l_bufferRequests.back().request);
-                }
-            }
-            else
-            {
-                //Envoi vers PostgreSQL
-                l_bufferRequestsForActualServer.push_front(incoming_cql_query);
-                cout << "Requete a envoyer vers PostgreSQL" << endl;
-            }
-            key_from_cql_query = "";
-            l_bufferRequests.pop_back();
-        }
-
-        if (l_bufferRequestsFromServer.size() > 0)
-        {
-            string key_from_cql_query = key_extractor(l_bufferRequestsFromServer.back());
-
-            int hashed_key = string_Hashing(key_from_cql_query);
-            cout << hashed_key << endl;
-
-            //On détermine le serveur vers lequel rediriger
-            int range_id = hashed_key % server_count;
-            cout << range_id << endl;
-
-            if (range_id == server_A.server_id)
-            {
-                server_to_redirect = server_A;
-            }
-            else if (range_id == server_B.server_id)
-            {
-                server_to_redirect = server_B;
-            }
-            else if (range_id == server_C.server_id)
-            {
-                server_to_redirect = server_C;
-            }
-            else if (range_id == server_D.server_id)
-            {
-                server_to_redirect = server_D;
-            }
-            else if (range_id == server_E.server_id)
-            {
-                server_to_redirect = server_E;
-            }
-            else if (range_id == server_F.server_id)
-            {
-                server_to_redirect = server_F;
-            }
-
-            //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
-            if (server_to_redirect.server_id != actual_server.server_id)
-            {
-                //On regarde si on doit rediriger vers un voisin
-                if (server_to_redirect.server_id == neighbor_server_1.server_id)              //...
-                {
-                    cout << "Requete a rediriger vers le voisin " << server_to_redirect.server_name << endl;
-                    send_to_server(socket_neighbor_1, l_bufferRequestsFromServer.back());
-                }
-                /*else if (server_to_redirect.server_id == neighbor_server_2.server_id)
-                {
-                    cout << "Requete a rediriger vers le voisin" << server_to_redirect.server_name << endl;
-                    send_to_server(socket_neighbor_2, l_bufferRequestsFromServer.back());
-                }*/
-                //Si non on crée la connection et on envoie
-                else
-                {
-                    cout << "Requete a rediriger vers " << server_to_redirect.server_name << endl;
-                    send_to_server(connect_to_server(server_to_redirect, port), l_bufferRequestsFromServer.back());
-                }
-            }
-            else
-            {
-                //Envoi vers PostgreSQL
-                l_bufferRequestsForActualServer.push_front(incoming_cql_query);
-                cout << "Requete a envoyer vers PostgreSQL" << endl;
-            }
-            key_from_cql_query = "";
-            l_bufferRequestsFromServer.pop_back();
-        }
-    }
-
-    return NULL;
-}
-
-int string_Hashing(string _key_from_cql_query)
-{
-    hash<string> hash_string;
-    int returned_hashed_key = hash_string(_key_from_cql_query);
-
-    if (returned_hashed_key < 0)
-        returned_hashed_key = 0 - returned_hashed_key;
-
-    return returned_hashed_key;
-}
-
-string key_extractor(string _incoming_cql_query)
-{
-    const string select_clauses[4] = { "SELECT ", "FROM ", "WHERE ", "LIMIT " };
-    const string update_clauses[3] = { "UPDATE ", "SET ", "WHERE " };
-    const string insert_into_clauses[2] = { "INSERT INTO ", "VALUES " };
-    const string delete_clauses[2] = { "DELETE ", "WHERE " };
-
-    size_t where_sub_pos, limit_sub_pos, values_sub_pos = 0;
-
-    string where_clause, values_clause = "";
-
-    string key = "";
-
-
-    if (_incoming_cql_query.substr(0, 6) == "SELECT" || _incoming_cql_query.substr(0, 6) == "select")
-    {
-        cout << "Type de la requete : SELECT" << endl;
-        where_sub_pos = _incoming_cql_query.find(select_clauses[2]);
-        limit_sub_pos = _incoming_cql_query.find(select_clauses[3]);
-
-        where_clause = _incoming_cql_query.substr(where_sub_pos, limit_sub_pos - where_sub_pos);
-
-        //On extrait, affiche et retourne la clé
-        key = extract_where_data(where_clause);
-        cout << "Extracted Key: " << key << endl;
-
-        return key;
-    }
-
-    //Si requête UPDATE:
-    else if (_incoming_cql_query.find("UPDATE ") != std::string::npos)
-    {
-        cout << "Type de la requete : UPDATE" << endl;
-        where_sub_pos = _incoming_cql_query.find(update_clauses[2]);
-
-        where_clause = _incoming_cql_query.substr(where_sub_pos, std::string::npos);
-
-        //On extrait, affiche et retourne la clé
-        key = extract_where_data(where_clause);
-        cout << "Extracted Key: " << key << endl;
-
-        return key;
-    }
-
-    //Si requête INSERT:
-    else if (_incoming_cql_query.find("INSERT ") != std::string::npos)
-    {
-        cout << "Type de la requete : INSERT" << endl;
-        values_sub_pos = _incoming_cql_query.find(insert_into_clauses[1]);
-
-        values_clause = _incoming_cql_query.substr(values_sub_pos, std::string::npos);
-
-        //On extrait, affiche et retourne la clé
-        key = extract_values_data(values_clause)[0];
-        cout << "Extracted Key: " << key << endl;
-
-        return key;
-    }
-
-    //Si requête DELETE:
-    else if (_incoming_cql_query.find("DELETE ") != std::string::npos)
-    {
-        cout << "Type de la requete : DELETE" << endl;
-        where_sub_pos = _incoming_cql_query.find(delete_clauses[1]);
-
-        where_clause = _incoming_cql_query.substr(where_sub_pos, std::string::npos);
-
-        //On extrait, affiche et retourne la clé
-        key = extract_where_data(where_clause);
-        cout << "Extracted Key: " << key << endl;
-
-        return key;
-    }
-    else {
-        logs("");
-        exit(EXIT_FAILURE);
-    }
-}
-#pragma endregion Redirecting

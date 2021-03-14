@@ -1,0 +1,6 @@
+------------Decoupage Requete------------
+Stream : 
+Opcode : 
+Taille Requete : 35
+Requete : DELETE FROM test WHERE id='dallas';
+-------------------END-------------------
