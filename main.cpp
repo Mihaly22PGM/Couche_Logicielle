@@ -1029,12 +1029,16 @@ void send_to_server(int _socketServer, string _query_to_send)
 #pragma region Redirecting
 void* redirecting(void* arg)
 {
+    string tempReq;
     while (1)
     {
         //On hash la clé extraite de la requête via la fonction string_Hashing()
         if (l_bufferRequests.size() > 0)
         {
-            string key_from_cql_query = key_extractor(l_bufferRequests.back().request);
+            tempReq = l_bufferRequests.back().request;
+            l_bufferRequests.pop_back();
+            cout<<"redirecting() pop back ok"<<endl;
+            string key_from_cql_query = key_extractor(tempReq);
 
             int hashed_key = string_Hashing(key_from_cql_query);
             cout << hashed_key << endl;
@@ -1075,7 +1079,7 @@ void* redirecting(void* arg)
                 if (server_to_redirect.server_id == neighbor_server_1.server_id)              //...
                 {
                     cout << "Requete a rediriger vers le voisin " << server_to_redirect.server_name << endl;
-                    send_to_server(socket_neighbor_1, l_bufferRequests.back().request);
+                    send_to_server(socket_neighbor_1, tempReq);
                 }
                 /*else if (server_to_redirect.server_id == neighbor_server_2.server_id)
                 {
@@ -1086,17 +1090,16 @@ void* redirecting(void* arg)
                 else
                 {
                     cout << "Requete a rediriger vers " << server_to_redirect.server_name << endl;
-                    send_to_server(connect_to_server(server_to_redirect, port), l_bufferRequests.back().request);
+                    send_to_server(connect_to_server(server_to_redirect, port), tempReq);
                 }
             }
             else
             {
                 //Envoi vers PostgreSQL
-                l_bufferRequestsForActualServer.push_front(incoming_cql_query);
+                l_bufferRequestsForActualServer.push_front(tempReq);
                 cout << "Requete a envoyer vers PostgreSQL" << endl;
             }
             key_from_cql_query = "";
-            l_bufferRequests.pop_back();
         }
 
         /*if (l_bufferRequestsFromServer.size() > 0)
