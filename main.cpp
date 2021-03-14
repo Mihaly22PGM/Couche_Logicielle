@@ -72,6 +72,7 @@ vector<std::string> fields, values, columns;
 std::string returned_select_sql_query = "";
 std::string LowerRequest = "";
 
+bool bl_UseReplication = false;
 bool bl_lastRequestFrame = false;
 SOCKET sockPGSQL;
 
@@ -157,20 +158,24 @@ pthread_t th_INITSocket_Redirection;
 #pragma endregion Prototypes
 
 int main(int argc, char *argv[])
-{
+{  
+    if (argv[1] != NULL){
+      if(std::string(argv[1]) == "oui")
+        bl_UseReplication = true;
+    }
     int CheckThreadCreation = 0;
-    //INITSocket();   //Sockets creation
     
     //ADDED
-    CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);
-    cout << "INITSocket_Redirection" << endl;
-
-    int a = 0;
-    while (a != 1)
-    {
-        cout << "tape 1 qd la couche logicielle est lancee sur tous les serveurs" << endl;
-        cin >> a;
-        cout << endl;
+    if (bl_UseReplication){
+      CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);
+      cout << "INITSocket_Redirection" << endl;
+      int a = 0;
+      while (a != 1)
+      {
+          cout << "tape 1 qd la couche logicielle est lancee sur tous les serveurs" << endl;
+          cin >> a;
+          cout << endl;
+      }
     }
     //ENDADDED
     
@@ -180,15 +185,17 @@ int main(int argc, char *argv[])
 
     //ADDED    
     cout << "ConnexionPGSQL" << endl;
-    server_identification();
-    cout << "server_identification" << endl;
+    if (bl_UseReplication){
+      server_identification();
+      cout << "server_identification" << endl;
 
-    int b = 0;
-    while (b != 1)
-    {
-        cout << "tape 1 qd la redirection est lancee sur tous les serveurs" << endl;
-        cin >> b;
-        cout << endl;
+      int b = 0;
+      while (b != 1)
+      {
+          cout << "tape 1 qd la redirection est lancee sur tous les serveurs" << endl;
+          cin >> b;
+          cout << endl;
+      }
     }
     //ENDADDDED
     
@@ -197,10 +204,11 @@ int main(int argc, char *argv[])
     CheckThreadCreation += pthread_create(&th_FrameData, NULL, TraitementFrameData, NULL);
     CheckThreadCreation += pthread_create(&th_Requests, NULL, TraitementRequests, NULL);
     CheckThreadCreation += pthread_create(&th_PostgreSQL, NULL, SendPGSQL, NULL);
-    //ADDED
-    CheckThreadCreation += pthread_create(&th_Redirecting, NULL, redirecting, NULL);
-    //ENDADDED
-    
+    if (bl_UseReplication){
+      //ADDED
+      CheckThreadCreation += pthread_create(&th_Redirecting, NULL, redirecting, NULL);
+      //ENDADDED
+    }
     //Check if threads have been created
     if (CheckThreadCreation !=0){
         logs("main() : Error while creating threads, abording");
@@ -208,15 +216,17 @@ int main(int argc, char *argv[])
     }
     
     //ADDED
-    int c = 0;
-    while (c != 1)
-    {
-        cout << "tape 1 qd la redirection est lancee sur tous les serveurs" << endl;
-        cin >> c;
-        cout << endl;
+    if (bl_UseReplication){
+      int c = 0;
+      while (c != 1)
+      {
+          cout << "tape 1 qd la redirection est lancee sur tous les serveurs" << endl;
+          cin >> c;
+          cout << endl;
+      }
+  
+      cout << "OK" << endl;
     }
-
-    cout << "OK" << endl;
     //ENDADDED
     
     //Réception des frames en continu et mise en buffer
@@ -262,7 +272,10 @@ void* TraitementFrameData(void *arg){
                     fichier<<"Requete : "<<s_Requests.request<<endl;
                     fichier<<"-------------------END-------------------"<<endl;
                 }
-                l_bufferRequests.push_front(s_Requests);
+                if (bl_UseReplication)
+                  l_bufferRequests.push_front(s_Requests);
+                else
+                   l_bufferRequestsForActualServer.push_front(s_Requests.request);
                 memset(s_Requests.request,0,s_Requests.size);
                 l_bufferFrames.pop_back();
             }
