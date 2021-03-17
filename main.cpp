@@ -47,29 +47,40 @@ struct tm* timestamp;
 struct ThreadsInfos {
 
 };
+
 struct Requests {
     char opcode[1];
     char stream[2];
     unsigned long int size;
     char request[1024];
 };
+
 struct sockaddr_un s_PGSQL_addr;
 
+struct server
+{
+    string server_name;
+    int server_id;
+    string server_ip_address;
+};
 #pragma endregion Structures
 
 #pragma region Global
 Requests s_Requests;
 char buffData[1024];
 char header[12];
+
 std::list<char*> l_bufferFrames;
 std::list<Requests> l_bufferRequests;
 std::list<std::string> l_bufferPGSQLRequests;
+
 std::string incoming_cql_query, translated_sql_query;
 size_t from_sub_pos, where_sub_pos, limit_sub_pos, set_sub_pos, values_sub_pos = 0;
 std::string select_clause, from_clause, where_clause, update_clause, set_clause, insert_into_clause, values_clause, delete_clause = "";
 std::string table, key = "";
 vector<std::string> fields, values, columns;
 std::string returned_select_sql_query = "";
+
 std::string LowerRequest = "";
 
 bool bl_UseReplication = false;
@@ -80,19 +91,12 @@ pthread_t th_FrameClient;
 pthread_t th_FrameData;
 pthread_t th_Requests;
 pthread_t th_PostgreSQL;
+pthread_t th_Redirecting;
+pthread_t th_INITSocket_Redirection;
 
 const char* conninfo;
 PGconn* conn;
 PGresult* res;
-
-
-//ADD
-struct server                   //...
-{
-    string server_name;
-    int server_id;
-    string server_ip_address;
-};
 
 //Variables
 //int server_count = 6;
@@ -113,12 +117,10 @@ server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };
 
+//ADDED
+std::vector <char*> vect_column_name;
+std::vector <char*> vect_value;
 //ENDADDED
-
-
-
-
-
 #pragma endregion Global
 
 #pragma region Prototypes
@@ -143,7 +145,7 @@ vector<string> extract_insert_into_data_columns(string _insert_into_clause);
 vector<string> extract_values_data(string _values_clause);
 string extract_delete_data(string _delete_clause);
 void CQLtoSQL(string _incoming_cql_query);
-//ADD
+
 int string_Hashing(string _key_from_cql_query);
 string get_ip_from_actual_server();
 int connect_to_server(server _server_to_connect, int _port_to_connect);
@@ -152,9 +154,6 @@ void* INITSocket_Redirection(void* arg);
 void* redirecting(void* arg);
 void server_identification();
 string key_extractor(string _incoming_cql_query);
-pthread_t th_Redirecting;
-pthread_t th_INITSocket_Redirection;
-//ENDADD
 #pragma endregion Prototypes
 
 int main(int argc, char* argv[])
@@ -165,7 +164,6 @@ int main(int argc, char* argv[])
     }
     int CheckThreadCreation = 0;
 
-    //ADDED
     if (bl_UseReplication) {
         CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);
         cout << "INITSocket_Redirection" << endl;
@@ -177,13 +175,9 @@ int main(int argc, char* argv[])
             cout << endl;
         }
     }
-    //ENDADDED
-
-
 
     ConnexionPGSQL();   //Connexion PGSQL
 
-    //ADDED    
     cout << "ConnexionPGSQL" << endl;
     if (bl_UseReplication) {
         server_identification();
@@ -197,7 +191,6 @@ int main(int argc, char* argv[])
             cout << endl;
         }
     }
-    //ENDADDDED
 
     //Starting threads for sockets
 
@@ -205,9 +198,7 @@ int main(int argc, char* argv[])
     CheckThreadCreation += pthread_create(&th_Requests, NULL, TraitementRequests, NULL);
     CheckThreadCreation += pthread_create(&th_PostgreSQL, NULL, SendPGSQL, NULL);
     if (bl_UseReplication) {
-        //ADDED
         CheckThreadCreation += pthread_create(&th_Redirecting, NULL, redirecting, NULL);
-        //ENDADDED
     }
     //Check if threads have been created
     if (CheckThreadCreation != 0) {
@@ -215,7 +206,6 @@ int main(int argc, char* argv[])
         exit_prog(EXIT_FAILURE);
     }
 
-    //ADDED
     if (bl_UseReplication) {
         int c = 0;
         while (c != 1)
@@ -227,7 +217,6 @@ int main(int argc, char* argv[])
 
         cout << "OK" << endl;
     }
-    //ENDADDED
 
     //Réception des frames en continu et mise en buffer
     INITSocket();
@@ -327,9 +316,6 @@ void ConnexionPGSQL() {
 
 void* SendPGSQL(void* arg) {
     PGresult* res;
-    int row_count = PQntuples(res);
-    std::vector <char*> vect_column_name;
-    std::vector <char*> vect_value;
     char requestPGSQL[1024];
     while (1) {
         if (l_bufferPGSQLRequests.size() > 0) {
@@ -338,17 +324,27 @@ void* SendPGSQL(void* arg) {
             l_bufferPGSQLRequests.pop_back();
             cout << requestPGSQL << endl;
             res = PQexec(conn, requestPGSQL);
-            if (PQresultStatus(res) == PGRES_TUPLES_OK) {
+            if (PQresultStatus(res) == PGRES_TUPLES_OK) {    //(uniquement pour les SELECT, sinon rien)
                 //Affichage des En-têtes
                 int nFields = PQnfields(res);
+                printf("\n\n");
                 for (int i = 0; i < nFields; i++)
                     printf("%-15s", PQfname(res, i));
                 printf("\n\n");
                 //Affichage des résultats
                 for (int i = 0; i < PQntuples(res); i++)
                 {
+                    //ADDED
                     for (int j = 0; j < nFields; j++)
+                    {
                         printf("%-15s", PQgetvalue(res, i, j));
+                        //Toujours deux colonnes normalement!
+                        if (j % 2 == 0)
+                            vect_column_name.push_back(PQgetvalue(res, i, j));
+                        else
+                            vect_value.push_back(PQgetvalue(res, i, j));
+                    }
+                    //ENDADDED
                     printf("\n");
                 }
                 //TODO DELETE PRINT AND SEND TO CASSANDRA RESPONSE
@@ -361,14 +357,6 @@ void* SendPGSQL(void* arg) {
                 cout << "Erreur dans la requête" << endl;
                 cout << PQresultErrorMessage(res);
                 //TODO SEND TO CASSANDRA NOK
-            }
-
-            for (int i = 0; i < row_count; i++)
-            {
-                vect_column_name.push_back(PQgetvalue(res, row_count, 0));
-                cout << PQgetvalue(res, row_count, 0) << endl;
-                vect_value.push_back(PQgetvalue(res, row_count, 1));
-                cout << PQgetvalue(res, row_count, 1) << endl;
             }
 
             PQclear(res);
@@ -387,7 +375,7 @@ void create_select_sql_query(string _table, string _key, vector<string> _fields)
 
     returned_select_sql_query = "SELECT * FROM " + _key;
     //On regarde si, dans la requête CQL, on voulait prendre * ou des champs particuliers
-    if (_fields[0] != "*")
+    if (_fields[0] != " * ")        //CHANGED
     {
         returned_select_sql_query += " WHERE column_name IN ('";
         for (string field : _fields)
@@ -469,7 +457,7 @@ vector<string> extract_select_data(string _select_clause)
         }
         // token.erase(remove(token.begin(), token.end(), '('), token.end());   //Pas utile selon moi
         // token.erase(remove(token.begin(), token.end(), '\''), token.end());
-        // token.erase(remove(token.begin(), token.end(), ' '), token.end());
+        token.erase(remove(token.begin(), token.end(), ' '), token.end());      //CHANGED
         // token.erase(remove(token.begin(), token.end(), ';'), token.end());
         // token.erase(remove(token.begin(), token.end(), ')'), token.end());
 
@@ -483,7 +471,7 @@ vector<string> extract_select_data(string _select_clause)
     }
     // _select_clause.erase(remove(_select_clause.begin(), _select_clause.end(), '('), _select_clause.end());
     // _select_clause.erase(remove(_select_clause.begin(), _select_clause.end(), '\''), _select_clause.end());
-    // _select_clause.erase(remove(_select_clause.begin(), _select_clause.end(), ' '), _select_clause.end());
+    _select_clause.erase(remove(_select_clause.begin(), _select_clause.end(), ' '), _select_clause.end());      //CHANGED
     // _select_clause.erase(remove(_select_clause.begin(), _select_clause.end(), ';'), _select_clause.end());
     // _select_clause.erase(remove(_select_clause.begin(), _select_clause.end(), ')'), _select_clause.end());
 
@@ -936,7 +924,7 @@ void* INITSocket_Redirection(void* arg)
 #pragma endregion Listening
 
 
-//ADD (TO END)
+
 #pragma region Preparation
 void server_identification()
 {
