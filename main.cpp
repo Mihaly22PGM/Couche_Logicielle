@@ -260,8 +260,8 @@ void* TraitementRequests(void *arg){
         if(l_bufferRequestsForActualServer.size()>0){
             strcpy(TempReq,l_bufferRequestsForActualServer.back().request);
             tempReq.request = std::string(TempReq);
-            // strcpy(tempReq.opcode, l_bufferRequestsForActualServer.back().opcode);
-            strcpy(tempReq.stream, l_bufferRequestsForActualServer.back().stream);
+            //memcpy(tempReq.opcode, l_bufferRequestsForActualServer.back().opcode, 1);
+            memcpy(tempReq.stream, l_bufferRequestsForActualServer.back().stream, 2);
             l_bufferRequestsForActualServer.pop_back(); 
             CQLtoSQL(tempReq);
         }
@@ -301,16 +301,17 @@ void ConnexionPGSQL(){
 void *SendPGSQL(void *arg){
     PGresult *res;
     char requestPGSQL[1024];
+    //requestPGSQL="NOK";
     char stream[2];
     while(1){
         if(l_bufferPGSQLRequests.size() > 0){
             strcpy(requestPGSQL, l_bufferPGSQLRequests.back().request.c_str());
-            strcpy(stream, l_bufferPGSQLRequests.back().stream);
+            memcpy(stream, l_bufferPGSQLRequests.back().stream,2);
             // cout<<"SendPGSQL() COPY ok"<<endl;
             l_bufferPGSQLRequests.pop_back();
             cout<<requestPGSQL<<endl;
             // cout<<"Opcode : "<<opCode<<endl;
-            cout<<"Stream : "<<stream<<endl;
+            cout<<"Stream : "<<std::hex<<stream[0]<<stream[1]<<endl;
             res = PQexec(conn, requestPGSQL);
     	      if (PQresultStatus(res) == PGRES_TUPLES_OK){
                 //Affichage des En-têtes
@@ -325,8 +326,8 @@ void *SendPGSQL(void *arg){
                         printf("%-15s", PQgetvalue(res, i, j));
                     printf("\n");
     	        }
-                //TODO DELETE PRINT AND SEND TO CASSANDRA RESPONSE
-            }
+                //Pour tester, à optimiser              
+	    }
             else if(PQresultStatus(res) == PGRES_COMMAND_OK){
                 cout<<"Command OK"<<endl;
                 //TODO SEND TO CASSANDRA OK
@@ -336,6 +337,8 @@ void *SendPGSQL(void *arg){
                 cout<<PQresultErrorMessage(res);
                 //TODO SEND TO CASSANDRA NOK
             }
+            //write(sockDataClient, &stream[0], 2);
+            write(sockDataClient, stream, 2);
             PQclear(res);
         }
     }
@@ -350,7 +353,7 @@ void create_select_sql_query(string _table, string _key, vector<string> _fields,
     //On considère que le nom de la table est juste la key CQL, mais on pourrait imaginer une concaténation de la table CQL et de la key CQL -> le paramètre _table n'est pas utilisé ici
     //Pour la mise en forme de la réponse au format CQL, on va faire ça au retour du RWCS, siinon la requête d'envoi (ici) aurait été trop complexe
     SQLRequests TempSQLReq;
-    strcpy(TempSQLReq.stream, id);
+    memcpy(TempSQLReq.stream, id,2);
     TempSQLReq.request = "SELECT * FROM " + _key;
     //On regarde si, dans la requête CQL, on voulait prendre * ou des champs particuliers
     if (_fields[0] != "*")
@@ -365,8 +368,8 @@ void create_select_sql_query(string _table, string _key, vector<string> _fields,
     }
     else{
         TempSQLReq.request += ";";
-        l_bufferPGSQLRequests.push_front(TempSQLReq);
     }
+    l_bufferPGSQLRequests.push_front(TempSQLReq);
     return ;
 }
 
@@ -737,7 +740,6 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query) //TODO replace by void
                 cout << field << " __ ";
             }
             cout << endl;
-
             //Appel de la fonction de conversion pour du RWCS
             create_select_sql_query(table, key, fields, Request_incoming_cql_query.stream);
         }
