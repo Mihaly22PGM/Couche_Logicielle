@@ -12,7 +12,7 @@ extern char buffClient[1024];
 
 struct Request{
     char RequestNumber[2];
-    char RequestOpcode;
+    char RequestOpcode[1];
     char *Request;
 };
 
