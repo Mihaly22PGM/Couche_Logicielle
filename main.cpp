@@ -7,15 +7,15 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
-// #include <thread>
 #include <pthread.h>
 #include <list>
 #include <vector>
 #include <string.h>
 #include <algorithm>
-#include "c_Socket.h"
-#include "libpq-fe.h"
 #include <future>
+#include "c_Socket.h"
+#include "c_Logs.h"
+#include "libpq-fe.h"
 
 //Debug libraries
 #include <iostream>
@@ -34,10 +34,12 @@ typedef int SOCKET;
 
 #pragma region DeleteForProd
 string const nomFichier("/home/tfe_rwcs/Couche_Logicielle/Request.log");
+// string const LogFile("Logs");
 ofstream fichier(nomFichier.c_str());
-char date[9];
 time_t t = time(0);
-struct tm *timestamp;
+std::chrono::steady_clock::time_point startTimestamp;
+std::chrono::steady_clock::time_point endTimestamp;
+c_Logs o_Logs;
 #pragma endregion DeleteForProd
 
 #pragma region Structures
@@ -120,8 +122,7 @@ void *TraitementRequests(void*);
 void ConnexionPGSQL();
 void *SendPGSQL(void*);
 void exit_prog(int CodeEXIT);
-void logs(std::string msg);
-
+// void logs(std::string msg, LogStatus LogStatusText = LogStatus::INFO);
 void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2]);
 void create_update_sql_query(string _table, string _key, vector<string> _values, char id[2]);
 void create_insert_sql_query(string _table, string _key, vector<string> _columns,  vector<string> _values, char id[2]);
@@ -137,7 +138,7 @@ vector<string> extract_values_data(string _values_clause);
 string extract_delete_data(string _delete_clause);
 void CQLtoSQL(SQLRequests Request_incoming_cql_query);
 int string_Hashing(string _key_from_cql_query);
-string get_ip_from_actual_server();
+// string get_ip_from_actual_server();
 int connect_to_server(server _server_to_connect, int _port_to_connect);
 void send_to_server(int _socketServer, string _query_to_send);
 void* INITSocket_Redirection(void* arg);
@@ -150,31 +151,34 @@ pthread_t th_INITSocket_Redirection;
 
 int main(int argc, char *argv[])
 {  
+    c_Logs o_Logs;
+    startTimestamp = std::chrono::steady_clock::now();
     if (argv[1] != NULL){
       if(std::string(argv[1]) == "oui")
         bl_UseReplication = true;
     }
-    int CheckThreadCreation = 0;
-
+    int CheckThreadCreation = 0;    
     if (bl_UseReplication){
-      CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);
-      cout << "INITSocket_Redirection" << endl;
-      int a = 0;
-      while (a != 1)
-      {
-          cout << "tape 1 qd la couche logicielle est lancee sur tous les serveurs" << endl;
-          cin >> a;
-          cout << endl;
-      }
+        o_Logs.logs("Starting Proxy...Replication mode selected");
+        CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);
+        if(CheckThreadCreation !=0)
+            o_Logs.logs("main() : Thread th_INITSocket_Redirection creation failed", o_Logs.ERROR);
+        else
+            o_Logs.logs("main() : Thread th_INITSocket_Redirection created");
+        int a = 0;
+        while (a != 1)
+        {
+            cout << "tape 1 qd la couche logicielle est lancee sur tous les serveurs" << endl;
+            cin >> a;
+            cout << endl;
+        }
     }
-    
+    else
+        o_Logs.logs("Starting Proxy...Standalone mode selected");
     ConnexionPGSQL();   //Connexion PGSQL
     
-    cout << "ConnexionPGSQL" << endl;
     if (bl_UseReplication){
       server_identification();
-      cout << "server_identification" << endl;
-
       int b = 0;
       while (b != 1)
       {
@@ -182,10 +186,9 @@ int main(int argc, char *argv[])
           cin >> b;
           cout << endl;
       }
-    }
+    }   
     
     //Starting threads for sockets
-
     CheckThreadCreation += pthread_create(&th_FrameData, NULL, TraitementFrameData, NULL);
     CheckThreadCreation += pthread_create(&th_Requests, NULL, TraitementRequests, NULL);
     CheckThreadCreation += pthread_create(&th_PostgreSQL, NULL, SendPGSQL, NULL);
@@ -194,14 +197,19 @@ int main(int argc, char *argv[])
     }
     //Check if threads have been created
     if (CheckThreadCreation !=0){
-        logs("main() : Error while creating threads, abording");
+        o_Logs.logs("main() : Error while creating threads", o_Logs.ERROR);
         exit_prog(EXIT_FAILURE);
     }
     
     //Réception des frames en continu et mise en buffer
-    INITSocket();
-    pthread_create(&th_FrameClient, NULL, TraitementFrameClient, NULL);
+    INITSocket();   //TODO move to c++ function add add logs
+    CheckThreadCreation += pthread_create(&th_FrameClient, NULL, TraitementFrameClient, NULL);
     
+    if (CheckThreadCreation !=0){
+        o_Logs.logs("main() : Error while creating threads", o_Logs.ERROR);
+        exit_prog(EXIT_FAILURE);
+    }
+    o_Logs.logs("main() : Starting Done");
     while(1){
         sockServer = 0;
         sockServer = recv(sockDataClient, buffData, sizeof(buffData),0);
@@ -209,63 +217,74 @@ int main(int argc, char *argv[])
             l_bufferFrames.push_front(buffData);
         }
     }
+    o_Logs.logs("main() : Break input... Ending program");
     return EXIT_SUCCESS;
 }
 
 #pragma region Requests
 void* TraitementFrameData(void *arg){
     unsigned long int sommeSize = 0;
-    while(1){
-        if(l_bufferFrames.size()>0){
-            bl_lastRequestFrame = false;
-	        sommeSize = 0;
-            while(bl_lastRequestFrame == false){
-                memcpy(header,l_bufferFrames.back()+sommeSize,13);	    
-                s_Requests.size = (unsigned int)header[11+sommeSize] * 256 + (unsigned int)header[12+sommeSize];
-                if((unsigned int)header[10+sommeSize]>0){
-                    printf("STOOOOOOPP IT");
-                    exit (EXIT_FAILURE);    //TODO What the hell is this?
+    try{
+        while(1){
+            if(l_bufferFrames.size()>0){
+                bl_lastRequestFrame = false;
+                sommeSize = 0;
+                while(bl_lastRequestFrame == false){
+                    memcpy(header,l_bufferFrames.back()+sommeSize,13);	    
+                    s_Requests.size = (unsigned int)header[11+sommeSize] * 256 + (unsigned int)header[12+sommeSize];
+                    if((unsigned int)header[10+sommeSize]>0){
+                        o_Logs.logs("TraitementFrameData() : Oupsi, frame un peu longue, adapter le code si cette erreur apparait", o_Logs.ERROR);
+                        exit (EXIT_FAILURE);
+                    }
+                    memcpy(s_Requests.request, l_bufferFrames.back()+13, s_Requests.size);
+                    memcpy(s_Requests.opcode, header+4+sommeSize,1);
+                    memcpy(s_Requests.stream, header+2+sommeSize,2);
+                    sommeSize += s_Requests.size+16;    //Request size + header size(13) + 3 hex values at the end of the request
+                    if (sizeof(l_bufferFrames.back()) <= sommeSize){
+                        bl_lastRequestFrame = true;
+                    }
+                    if (fichier){
+                        fichier<<"------------Decoupage Requete------------"<<endl;
+                        fichier<<"Stream : "<<s_Requests.opcode<<endl;
+                        fichier<<"Opcode : "<<s_Requests.opcode<<endl;
+                        fichier<<"Taille Requete : "<<s_Requests.size<<endl;
+                        fichier<<"Requete : "<<s_Requests.request<<endl;
+                        fichier<<"-------------------END-------------------"<<endl;
+                    }
+                    if (bl_UseReplication)
+                    l_bufferRequests.push_front(s_Requests);
+                    else
+                    l_bufferRequestsForActualServer.push_front(s_Requests);
+                    memset(s_Requests.request,0,s_Requests.size);
+                    l_bufferFrames.pop_back();
                 }
-                memcpy(s_Requests.request, l_bufferFrames.back()+13, s_Requests.size);
-                memcpy(s_Requests.opcode, header+4+sommeSize,1);
-                memcpy(s_Requests.stream, header+2+sommeSize,2);
-                sommeSize += s_Requests.size+16;    //Request size + header size(13) + 3 hex values at the end of the request
-                if (sizeof(l_bufferFrames.back()) <= sommeSize){
-                    bl_lastRequestFrame = true;
-                }
-                if (fichier){
-                    fichier<<"------------Decoupage Requete------------"<<endl;
-                    fichier<<"Stream : "<<s_Requests.opcode<<endl;
-                    fichier<<"Opcode : "<<s_Requests.opcode<<endl;
-                    fichier<<"Taille Requete : "<<s_Requests.size<<endl;
-                    fichier<<"Requete : "<<s_Requests.request<<endl;
-                    fichier<<"-------------------END-------------------"<<endl;
-                }
-                if (bl_UseReplication)
-                  l_bufferRequests.push_front(s_Requests);
-                else
-                   l_bufferRequestsForActualServer.push_front(s_Requests);
-                memset(s_Requests.request,0,s_Requests.size);
-                l_bufferFrames.pop_back();
             }
         }
     }
+    catch(std::exception const& e){
+        o_Logs.logs("TraitementRequests() : "+std::string(e.what()), o_Logs.ERROR);
+    } 
+    pthread_exit(NULL);
     pthread_exit(NULL);
 }
 
 void* TraitementRequests(void *arg){
     SQLRequests tempReq;
     char TempReq[1024];
-    while(1){
-        if(l_bufferRequestsForActualServer.size()>0){
-            strcpy(TempReq,l_bufferRequestsForActualServer.back().request);
-            tempReq.request = std::string(TempReq);
-            //memcpy(tempReq.opcode, l_bufferRequestsForActualServer.back().opcode, 1);
-            memcpy(tempReq.stream, l_bufferRequestsForActualServer.back().stream, 2);
-            l_bufferRequestsForActualServer.pop_back(); 
-            CQLtoSQL(tempReq);
+    try{
+        while(1){
+            if(l_bufferRequestsForActualServer.size()>0){
+                strcpy(TempReq,l_bufferRequestsForActualServer.back().request);
+                tempReq.request = std::string(TempReq);
+                memcpy(tempReq.stream, l_bufferRequestsForActualServer.back().stream, 2);
+                l_bufferRequestsForActualServer.pop_back(); 
+                CQLtoSQL(tempReq);
+            }
         }
     }
+    catch(std::exception const& e){
+        o_Logs.logs("TraitementRequests() : " + std::string(e.what()), o_Logs.ERROR);
+    } 
     pthread_exit(NULL);
 }
 
@@ -278,30 +297,25 @@ void ConnexionPGSQL(){
     /* Check to see that the backend connection was successfully made */
     if (PQstatus(conn) != CONNECTION_OK)
     {
-        fprintf(stderr, "Connection to database failed: %s", PQerrorMessage(conn));
-        logs("ConnexionPGSQL() : Connexion to database failed");
+        o_Logs.logs("ConnexionPGSQL() : Connexion to database failed", o_Logs.ERROR);
         exit_prog(EXIT_FAILURE);
     }
-
     /* Set always-secure search path, so malicious users can't take control. */
     res = PQexec(conn, "SELECT pg_catalog.set_config('search_path', 'public', false)");
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
-        fprintf(stderr, "SET failed: %s", PQerrorMessage(conn));
         PQclear(res);   //TODO check what is it?
-        logs("ConnexionPGSQL() : Secure search path error");
+        o_Logs.logs("ConnexionPGSQL() : Secure search path error", o_Logs.ERROR);
         exit_prog(EXIT_FAILURE); 
     }
-    else{
-	      std::cout<<"Connexion PGSQL OKAYYYY"<<endl;
-    }
+    else
+	    o_Logs.logs("ConnexionPGSQL() : Connexion to PostgreSQL sucess");
     PQclear(res);
 }
 
-void *SendPGSQL(void *arg){
+void *SendPGSQL(void *arg){     //TODO logs not done yet, waiting for "prod" code
     PGresult *res;
     char requestPGSQL[1024];
-    //requestPGSQL="NOK";
     char stream[2];
     while(1){
         if(l_bufferPGSQLRequests.size() > 0){
@@ -309,9 +323,9 @@ void *SendPGSQL(void *arg){
             memcpy(stream, l_bufferPGSQLRequests.back().stream,2);
             // cout<<"SendPGSQL() COPY ok"<<endl;
             l_bufferPGSQLRequests.pop_back();
-            cout<<requestPGSQL<<endl;
+            // cout<<requestPGSQL<<endl;
             // cout<<"Opcode : "<<opCode<<endl;
-            cout<<"Stream : "<<std::hex<<stream[0]<<stream[1]<<endl;
+            // cout<<"Stream : "<<std::hex<<stream[0]<<stream[1]<<endl;
             res = PQexec(conn, requestPGSQL);
     	      if (PQresultStatus(res) == PGRES_TUPLES_OK){
                 //Affichage des En-têtes
@@ -349,9 +363,6 @@ void *SendPGSQL(void *arg){
 #pragma region CQL_SQL
 void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2])
 {
-    //Pour une requête SELECT, on va prendre toutes les données des deux colonnes de la table où le column_name correspond au champ voulu
-    //On considère que le nom de la table est juste la key CQL, mais on pourrait imaginer une concaténation de la table CQL et de la key CQL -> le paramètre _table n'est pas utilisé ici
-    //Pour la mise en forme de la réponse au format CQL, on va faire ça au retour du RWCS, siinon la requête d'envoi (ici) aurait été trop complexe
     SQLRequests TempSQLReq;
     memcpy(TempSQLReq.stream, id,2);
     TempSQLReq.request = "SELECT * FROM " + _key;
@@ -586,15 +597,7 @@ vector<string> extract_set_data(string set_clause_data)
 
 string extract_insert_into_data_table(string insert_into_clause_data)
 {
-    // string insert_into_clause_data = _insert_into_clause.substr(0, _NPOS);
-
     insert_into_clause_data = insert_into_clause_data.substr(0, insert_into_clause_data.find("("));
-
-    // insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), '('), insert_into_clause_data.end());
-    // insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), '\''), insert_into_clause_data.end());
-    // insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), ' '), insert_into_clause_data.end());
-    // insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), ';'), insert_into_clause_data.end());
-    // insert_into_clause_data.erase(remove(insert_into_clause_data.begin(), insert_into_clause_data.end(), ')'), insert_into_clause_data.end());
 
     return insert_into_clause_data;
 }
@@ -693,7 +696,7 @@ string extract_delete_data(string _delete_clause)
     return delete_clause_data;
 }
 
-void CQLtoSQL(SQLRequests Request_incoming_cql_query) //TODO replace by void
+void CQLtoSQL(SQLRequests Request_incoming_cql_query)
 {
     fields.clear();
     values.clear();
@@ -746,12 +749,12 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query) //TODO replace by void
          catch(std::string const& chaine)
         {
             cerr << chaine << endl;
-            logs(chaine);
+            o_Logs.logs(chaine);
         }
         catch(std::exception const& e)
         {
             cerr << "ERREUR : " << e.what() << endl;
-            logs(e.what());
+            o_Logs.logs(e.what());
         }
     }
     else if (LowerRequest.substr(0, 6) == "update")
@@ -786,12 +789,12 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query) //TODO replace by void
         catch(std::string const& chaine)
         {
             cerr << chaine << endl;
-            logs(chaine);
+            o_Logs.logs(chaine);
         }
         catch(std::exception const& e)
         {
             cerr << "ERREUR : " << e.what() << endl;
-            logs(e.what());
+            o_Logs.logs(e.what());
         }
     }
     else if (LowerRequest.substr(0, 11) == "insert into")
@@ -821,12 +824,12 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query) //TODO replace by void
         catch(std::string const& chaine)
         {
             cerr << chaine << endl;
-            logs(chaine);
+            o_Logs.logs(chaine);
         }
         catch(std::exception const& e)
         {
             cerr << "ERREUR : " << e.what() << endl;
-            logs(e.what());
+            o_Logs.logs(e.what());
         }
     }
     else if (LowerRequest.substr(0, 6) == "delete")
@@ -850,29 +853,32 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query) //TODO replace by void
         catch(std::string const& chaine)
         {
             cerr << chaine << endl;
-            logs(chaine);
+            o_Logs.logs(chaine);
         }
         catch(std::exception const& e)
         {
             cerr << "ERREUR : " << e.what() << endl;
-            logs(e.what());
+            o_Logs.logs(e.what());
         }
     }
     else{
-        logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query);
+        o_Logs.logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query);
     }
 }
 #pragma endregion CQL_SQL
 
 #pragma region Utils
 
-void logs(string msg)
-{
-    timestamp = gmtime(&t);
-    strftime(date, sizeof(date), "%Y%m%d_%H:%M:%S", timestamp);
-    printf("log.%s\n", date);
-    cout<<msg<<endl;
-}
+// void logs(string msg, LogStatus LogStatusText)
+// {
+//     std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::now();    //Get time clock system
+//     time_t tt =  std::chrono::system_clock::to_time_t(timestamp);
+//     ofstream file("Logs", std::ios_base::app);
+//     if (file){
+//         file<<"Time : "<<ctime(&tt)<<" : "<<LogStatusText<<" : "<<msg<<endl;
+//     }
+//     file.close();
+// }
 
 void exit_prog(int codeEXIT){
 
@@ -911,62 +917,58 @@ void* INITSocket_Redirection(void* arg)
 }
 #pragma endregion Listening
 
-
-//ADD (TO END)
 #pragma region Preparation
 void server_identification()
 {
-    if (get_ip_from_actual_server() == server_A.server_ip_address)
+    char *s;
+    s = inet_ntoa(serv_addr.sin_addr);
+    string ipAddr = std::string(s);
+    o_Logs.logs("serveur_identification() : IP address : " + ipAddr);
+    if (ipAddr == server_A.server_ip_address)
     {
         actual_server = server_A;
         neighbor_server_1 = server_B;
         //neighbor_server_2 = server_F;
     }
-
-    else if (get_ip_from_actual_server() == server_B.server_ip_address)
+    else if (ipAddr == server_B.server_ip_address)
     {
         actual_server = server_B;
         neighbor_server_1 = server_A;
         //neighbor_server_1 = server_C;
         //neighbor_server_2 = server_A;
     }
-
-    else if (get_ip_from_actual_server() == server_C.server_ip_address)
+    else if (ipAddr == server_C.server_ip_address)
     {
         actual_server = server_C;
         neighbor_server_1 = server_D;
         neighbor_server_2 = server_B;
     }
-
-    else if (get_ip_from_actual_server() == server_D.server_ip_address)
+    else if (ipAddr == server_D.server_ip_address)
     {
         actual_server = server_D;
         neighbor_server_1 = server_E;
         neighbor_server_2 = server_C;
     }
-
-    else if (get_ip_from_actual_server() == server_E.server_ip_address)
+    else if (ipAddr == server_E.server_ip_address)
     {
         actual_server = server_E;
         neighbor_server_1 = server_F;
         neighbor_server_2 = server_D;
     }
-
-    else if (get_ip_from_actual_server() == server_F.server_ip_address)
+    else if (ipAddr == server_F.server_ip_address)
     {
         actual_server = server_F;
         neighbor_server_1 = server_A;
         neighbor_server_2 = server_E;
     }
 
-    cout << get_ip_from_actual_server() << endl;
-    cout << "Serveur #" << actual_server.server_id << ", Nom : " << actual_server.server_name << ", Adresse IP: " << actual_server.server_ip_address << endl;
-
+    // cout << "Serveur #" << actual_server.server_id << ", Nom : " << actual_server.server_name << ", Adresse IP: " << actual_server.server_ip_address << endl;
+    // o_Logs.logs("Serveur #"+actual_server.server_id +", Nom : "+actual_server.server_name+", Adresse IP: "+actual_server.server_ip_address); //TODO add this but bug for the int to log
     //On crée les connexions permanentes avec les serveurs voisins
     socket_neighbor_1 = connect_to_server(neighbor_server_1, port);               //...
     //socket_neighbor_2 = connect_to_server(neighbor_server_2, port);
 }
-
+/*
 string get_ip_from_actual_server() {
     struct ifaddrs* ifAddrStruct = NULL;
     struct ifaddrs* ifa = NULL;
@@ -994,12 +996,13 @@ string get_ip_from_actual_server() {
 
     return address;
 }
+*/
 #pragma endregion Preparation
 
 #pragma region Server_connection
 int connect_to_server(server _server_to_connect, int _port_to_connect)
 {
-    int sock_to_server = 0;
+    int sock_to_server = 0;     //TODO delete multiple declaration, not in priority
     struct sockaddr_in serv_addr;
     const char* ip_address = _server_to_connect.server_ip_address.c_str();
 
@@ -1025,14 +1028,11 @@ void send_to_server(int _socketServer, string _query_to_send)
 }
 #pragma endregion Server_connection
 
-
-
 #pragma region Redirecting
 void* redirecting(void* arg)
 {
     Requests req;
     string tempReq;
-    // char stream[2];
     while (1)
     {
         //On hash la clé extraite de la requête via la fonction string_Hashing()
@@ -1041,8 +1041,7 @@ void* redirecting(void* arg)
             tempReq = l_bufferRequests.back().request;
             strcpy(req.stream, l_bufferRequests.back().stream);
             strcpy(req.opcode, l_bufferRequests.back().opcode);
-            // req.RequestNumber=stream;
-            // req.RequestOpcode='0x07';
+
             l_bufferRequests.pop_back();
             cout<<"redirecting() pop back ok"<<endl;
             string key_from_cql_query = key_extractor(tempReq);
@@ -1098,7 +1097,6 @@ void* redirecting(void* arg)
             else
             {
                 //Envoi vers PostgreSQL
-                // req.Request=tempReq.c_str();
                 strcpy(req.request, tempReq.c_str());
                 l_bufferRequestsForActualServer.push_front(req);
                 cout << "Requete a envoyer vers PostgreSQL" << endl;
@@ -1123,6 +1121,7 @@ int string_Hashing(string _key_from_cql_query)
 
 string key_extractor(string _incoming_cql_query)
 {
+    //TODO same as CQLTOSQL, few thinks to change
     const string select_clauses[4] = { "SELECT ", "FROM ", "WHERE ", "LIMIT " };
     const string update_clauses[3] = { "UPDATE ", "SET ", "WHERE " };
     const string insert_into_clauses[2] = { "INSERT INTO ", "VALUES " };
@@ -1195,7 +1194,7 @@ string key_extractor(string _incoming_cql_query)
         return key;
     }
     else {
-        logs("");
+        o_Logs.logs("");
         exit(EXIT_FAILURE);
     }
 }

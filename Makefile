@@ -2,7 +2,7 @@
 EXEC = CoucheLogicielle
 
 #Source files
-SRC_FILES = main.cpp c_Socket.c
+SRC_FILES = main.cpp c_Socket.c c_Logs.cpp
 
 COURSE_DIR = /usr/include/postgresql
 
