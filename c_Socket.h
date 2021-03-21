@@ -20,4 +20,3 @@ extern struct sockaddr_in serv_addr;
 
 extern void INITSocket();
 extern void *TraitementFrameClient(void*);
-//extern Request TraitementFrameDataClient(const char[1024]);

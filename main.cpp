@@ -34,9 +34,8 @@ typedef int SOCKET;
 
 #pragma region DeleteForProd
 string const nomFichier("/home/tfe_rwcs/Couche_Logicielle/Request.log");
-// string const LogFile("Logs");
 ofstream fichier(nomFichier.c_str());
-time_t t = time(0);
+//time_t t = time(0);
 std::chrono::steady_clock::time_point startTimestamp;
 std::chrono::steady_clock::time_point endTimestamp;
 c_Logs o_Logs;
@@ -159,7 +158,7 @@ int main(int argc, char *argv[])
     }
     int CheckThreadCreation = 0;    
     if (bl_UseReplication){
-        o_Logs.logs("Starting Proxy...Replication mode selected");
+        o_Logs.logs("main() : Starting Proxy...Replication mode selected");
         CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);
         if(CheckThreadCreation !=0)
             o_Logs.logs("main() : Thread th_INITSocket_Redirection creation failed", o_Logs.ERROR);
@@ -174,7 +173,7 @@ int main(int argc, char *argv[])
         }
     }
     else
-        o_Logs.logs("Starting Proxy...Standalone mode selected");
+        o_Logs.logs("main() : Starting Proxy...Standalone mode selected");
     ConnexionPGSQL();   //Connexion PGSQL
     
     if (bl_UseReplication){
@@ -209,6 +208,8 @@ int main(int argc, char *argv[])
         o_Logs.logs("main() : Error while creating threads", o_Logs.ERROR);
         exit_prog(EXIT_FAILURE);
     }
+    else
+        o_Logs.logs("main() : Threads creation success");
     o_Logs.logs("main() : Starting Done");
     while(1){
         sockServer = 0;
@@ -244,7 +245,7 @@ void* TraitementFrameData(void *arg){
                         bl_lastRequestFrame = true;
                     }
                     if (fichier){
-                        fichier<<"------------Decoupage Requete------------"<<endl;
+                        fichier<<"------------Decoupage Requete------------"<<endl; //A supprimer absoloment en prod
                         fichier<<"Stream : "<<s_Requests.opcode<<endl;
                         fichier<<"Opcode : "<<s_Requests.opcode<<endl;
                         fichier<<"Taille Requete : "<<s_Requests.size<<endl;
@@ -862,26 +863,16 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
         }
     }
     else{
-        o_Logs.logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query);
+        o_Logs.logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query);      //TODO peut-être LOG ça dans un fichier de logs de requetes?
     }
 }
 #pragma endregion CQL_SQL
 
 #pragma region Utils
 
-// void logs(string msg, LogStatus LogStatusText)
-// {
-//     std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::now();    //Get time clock system
-//     time_t tt =  std::chrono::system_clock::to_time_t(timestamp);
-//     ofstream file("Logs", std::ios_base::app);
-//     if (file){
-//         file<<"Time : "<<ctime(&tt)<<" : "<<LogStatusText<<" : "<<msg<<endl;
-//     }
-//     file.close();
-// }
-
 void exit_prog(int codeEXIT){
 
+    o_Logs.logs("exit_prog() : Fin du programme...");
     exit(codeEXIT);
 }
 
@@ -1004,17 +995,17 @@ int connect_to_server(server _server_to_connect, int _port_to_connect)
 {
     int sock_to_server = 0;     //TODO delete multiple declaration, not in priority
     struct sockaddr_in serv_addr;
-    const char* ip_address = _server_to_connect.server_ip_address.c_str();
+    const char* ip_address = _server_to_connect.server_ip_address.c_str();  //MIHALY remove this line?
 
     sock_to_server = socket(AF_INET, SOCK_STREAM, 0);
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(_port_to_connect);
 
-    inet_pton(AF_INET, ip_address, &serv_addr.sin_addr);
+    inet_pton(AF_INET, ip_address, &serv_addr.sin_addr);    //MIHALY remove this line?
     connect(sock_to_server, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-
-    cout << endl << "Connexion etablie avec " << ip_address << endl;
+    o_Logs.logs("connect_to_server() : Connexion établie avec " + _server_to_connect.server_ip_address);
+    // cout << endl << "Connexion etablie avec " << ip_address << endl;
 
     return sock_to_server;
 }
@@ -1115,7 +1106,6 @@ int string_Hashing(string _key_from_cql_query)
 
     if (returned_hashed_key < 0)
         returned_hashed_key = 0 - returned_hashed_key;
-
     return returned_hashed_key;
 }
 
@@ -1132,7 +1122,6 @@ string key_extractor(string _incoming_cql_query)
     string where_clause, values_clause = "";
 
     string key = "";
-
 
     if (_incoming_cql_query.substr(0, 6) == "SELECT" || _incoming_cql_query.substr(0, 6) == "select")
     {
