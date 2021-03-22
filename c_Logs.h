@@ -19,11 +19,12 @@ private:
     char *t;
     std::chrono::time_point<std::chrono::high_resolution_clock> previous;
     double diff;
-    clock_t start = 0;
+    std::chrono::high_resolution_clock::time_point start;
 public:
     enum LogStatus {INFO, WARNING, ERROR};
     void logs(std::string, LogStatus LogStatusText = LogStatus::INFO);
-    void timestamp(std::string, clock_t);
+    void initClock(std::chrono::high_resolution_clock::time_point);
+    void timestamp(std::string, std::chrono::high_resolution_clock::time_point);
 };
 
 #endif

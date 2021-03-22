@@ -1,0 +1,9 @@
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Starting Done
+TimeStamp : 3 sec, 487 ms, 78 us. Message : Received frame
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Frame pushed
+TimeStamp : 1616451036 sec, 384 ms, 697 us. Message : Detected Frame in buffer, starting reading
+TimeStamp : 0 sec, 0 ms, 39 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame OK
+TimeStamp : 18446744073709 sec, 551 ms, 563 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 63 us. Message : CQLtoSQLDone

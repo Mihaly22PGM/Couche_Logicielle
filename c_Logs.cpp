@@ -18,13 +18,15 @@ void c_Logs::logs(std::string msg, LogStatus LogStatusText)
     }
     file.close();
 }
-void c_Logs::timestamp(std::string msg, clock_t stop){
-    diff = (double) stop-start;
-    std::ofstream file(fileLog, std::ios_base::app);
-    std::cout<<"TimeStamp : "<<msg<<", time : "<<diff<<std::endl; 
-    start = stop;
-    // if (file){
-        
-    // }
-    // std::cout << "Time to fill and iterate a vector of " << std::setw(9)<< size << " ints : " << diff.count() << " s\n";
+void c_Logs::initClock(std::chrono::high_resolution_clock::time_point initStart){
+    start = initStart;
+}
+void c_Logs::timestamp(std::string msg, std::chrono::high_resolution_clock::time_point stop){
+    std::chrono::duration<double, std::micro> us_double = stop-start;   //std::micro
+    std::ofstream file(fileLogPerfs, std::ios_base::app);
+    if(file){
+        file<<"TimeStamp : "<<uint64_t(us_double.count())/1000000<<" sec, "<<(uint64_t(us_double.count())/1000)%1000<<" ms, "<<uint64_t(us_double.count())%1000<<" us. Message : "<<msg<<std::endl;
+    }
+    file.close();
+    start = std::chrono::high_resolution_clock::now();
 }

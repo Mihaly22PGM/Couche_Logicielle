@@ -35,9 +35,6 @@ typedef int SOCKET;
 #pragma region DeleteForProd
 string const nomFichier("/home/tfe_rwcs/Couche_Logicielle/Request.log");
 ofstream fichier(nomFichier.c_str());
-//time_t t = time(0);
-std::chrono::steady_clock::time_point startTimestamp;
-std::chrono::steady_clock::time_point endTimestamp;
 c_Logs o_Logs;
 #pragma endregion DeleteForProd
 
@@ -151,8 +148,8 @@ pthread_t th_INITSocket_Redirection;
 int main(int argc, char *argv[])
 {  
     c_Logs o_Logs;
-    // startTimestamp = std::chrono::steady_clock::now();
-    o_Logs.timestamp("Starting Time", clock());
+    //o_Logs.initClock(std::chrono::high_resolution_clock::now());
+    //o_Logs.timestamp("Starting Time", std::chrono::high_resolution_clock::now());
     if (argv[1] != NULL){
       if(std::string(argv[1]) == "oui")
         bl_UseReplication = true;
@@ -212,12 +209,15 @@ int main(int argc, char *argv[])
     else
         o_Logs.logs("main() : Threads creation success");
     o_Logs.logs("main() : Starting Done");
-    o_Logs.timestamp("Starting done", clock());
+    o_Logs.initClock(std::chrono::high_resolution_clock::now());
+    o_Logs.timestamp("Starting Done", std::chrono::high_resolution_clock::now());
     while(1){
         sockServer = 0;
         sockServer = recv(sockDataClient, buffData, sizeof(buffData),0);
         if(sockServer > 0){
+            o_Logs.timestamp("Received frame", std::chrono::high_resolution_clock::now());
             l_bufferFrames.push_front(buffData);
+            o_Logs.timestamp("Frame pushed", std::chrono::high_resolution_clock::now());
         }
     }
     o_Logs.logs("main() : Break input... Ending program");
@@ -230,6 +230,7 @@ void* TraitementFrameData(void *arg){
     try{
         while(1){
             if(l_bufferFrames.size()>0){
+                o_Logs.timestamp("Detected Frame in buffer, starting reading", std::chrono::high_resolution_clock::now());
                 bl_lastRequestFrame = false;
                 sommeSize = 0;
                 while(bl_lastRequestFrame == false){
@@ -260,7 +261,9 @@ void* TraitementFrameData(void *arg){
                     l_bufferRequestsForActualServer.push_front(s_Requests);
                     memset(s_Requests.request,0,s_Requests.size);
                     l_bufferFrames.pop_back();
+                    o_Logs.timestamp("Request pushed", std::chrono::high_resolution_clock::now());
                 }
+                o_Logs.timestamp("Frame OK", std::chrono::high_resolution_clock::now());
             }
         }
     }
@@ -277,10 +280,12 @@ void* TraitementRequests(void *arg){
     try{
         while(1){
             if(l_bufferRequestsForActualServer.size()>0){
+                o_Logs.timestamp("Frame for actual server", std::chrono::high_resolution_clock::now());
                 strcpy(TempReq,l_bufferRequestsForActualServer.back().request);
                 tempReq.request = std::string(TempReq);
                 memcpy(tempReq.stream, l_bufferRequestsForActualServer.back().stream, 2);
-                l_bufferRequestsForActualServer.pop_back(); 
+                l_bufferRequestsForActualServer.pop_back();
+                o_Logs.timestamp("Calling CQLToSQL", std::chrono::high_resolution_clock::now());
                 CQLtoSQL(tempReq);
             }
         }
@@ -295,6 +300,7 @@ void* TraitementRequests(void *arg){
 
 #pragma region PostgreSQL
 void ConnexionPGSQL(){
+    //o_Logs.timestamp("Starting PGSQL Connexion", std::chrono::high_resolution_clock::now());
     conninfo = "user = postgres";
     conn = PQconnectdb(conninfo);
     /* Check to see that the backend connection was successfully made */
@@ -314,6 +320,7 @@ void ConnexionPGSQL(){
     else
 	    o_Logs.logs("ConnexionPGSQL() : Connexion to PostgreSQL sucess");
     PQclear(res);
+    //o_Logs.timestamp("PGSQL Connexion Done", std::chrono::high_resolution_clock::now());
 }
 
 void *SendPGSQL(void *arg){     //TODO logs not done yet, waiting for "prod" code
@@ -864,6 +871,7 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
     else{
         o_Logs.logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query, o_Logs.ERROR);      //TODO peut-être LOG ça dans un fichier de logs de requetes?
     }
+    o_Logs.timestamp("CQLtoSQLDone", std::chrono::high_resolution_clock::now());
 }
 #pragma endregion CQL_SQL
 
