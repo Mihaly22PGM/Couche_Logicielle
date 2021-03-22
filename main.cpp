@@ -151,7 +151,8 @@ pthread_t th_INITSocket_Redirection;
 int main(int argc, char *argv[])
 {  
     c_Logs o_Logs;
-    startTimestamp = std::chrono::steady_clock::now();
+    // startTimestamp = std::chrono::steady_clock::now();
+    o_Logs.timestamp("Starting Time", clock());
     if (argv[1] != NULL){
       if(std::string(argv[1]) == "oui")
         bl_UseReplication = true;
@@ -211,6 +212,7 @@ int main(int argc, char *argv[])
     else
         o_Logs.logs("main() : Threads creation success");
     o_Logs.logs("main() : Starting Done");
+    o_Logs.timestamp("Starting done", clock());
     while(1){
         sockServer = 0;
         sockServer = recv(sockDataClient, buffData, sizeof(buffData),0);
@@ -246,7 +248,7 @@ void* TraitementFrameData(void *arg){
                     }
                     if (fichier){
                         fichier<<"------------Decoupage Requete------------"<<endl; //A supprimer absoloment en prod
-                        fichier<<"Stream : "<<s_Requests.opcode<<endl;
+                        fichier<<"Stream : "<<s_Requests.stream<<endl;
                         fichier<<"Opcode : "<<s_Requests.opcode<<endl;
                         fichier<<"Taille Requete : "<<s_Requests.size<<endl;
                         fichier<<"Requete : "<<s_Requests.request<<endl;
@@ -324,9 +326,6 @@ void *SendPGSQL(void *arg){     //TODO logs not done yet, waiting for "prod" cod
             memcpy(stream, l_bufferPGSQLRequests.back().stream,2);
             // cout<<"SendPGSQL() COPY ok"<<endl;
             l_bufferPGSQLRequests.pop_back();
-            // cout<<requestPGSQL<<endl;
-            // cout<<"Opcode : "<<opCode<<endl;
-            // cout<<"Stream : "<<std::hex<<stream[0]<<stream[1]<<endl;
             res = PQexec(conn, requestPGSQL);
     	      if (PQresultStatus(res) == PGRES_TUPLES_OK){
                 //Affichage des En-têtes
@@ -390,7 +389,7 @@ void create_update_sql_query(string _table, string _key, vector<string> _values,
     //Comme on update uniquement la colonne value d'une table, il faut utiliser la clause CASE sur la valeur de la colonne column_name
     //Dans _values, les éléments "impairs" (le premier, troisième,...) sont les colonnes à update et les "pairs" sont les valeurs de ces colonnes
     SQLRequests TempSQLReq;
-    strcpy(TempSQLReq.stream, id);
+    memcpy(TempSQLReq.stream, id,2);
     TempSQLReq.request = "UPDATE " + _key + " SET value = ";
     //On regarde si on a plusieurs champs à update
     if (_values.size() > 2)
@@ -420,7 +419,7 @@ void create_update_sql_query(string _table, string _key, vector<string> _values,
 void create_insert_sql_query(string _table, string _key, vector<string> _columns,  vector<string> _values, char id[2])
 {
     SQLRequests TempSQLReq;
-    strcpy(TempSQLReq.stream, id);
+    memcpy(TempSQLReq.stream, id,2);
     TempSQLReq.request = "CREATE TABLE " + _key + " (column_name varchar(255), value varchar(255)); ";
     cout<<TempSQLReq.request<<endl;
     l_bufferPGSQLRequests.push_front(TempSQLReq);
@@ -437,7 +436,7 @@ void create_insert_sql_query(string _table, string _key, vector<string> _columns
 void create_delete_sql_query(string _table, string _key, char id[2])
 {
     SQLRequests TempSQLReq;
-    strcpy(TempSQLReq.stream, id);
+    memcpy(TempSQLReq.stream, id,2);
     TempSQLReq.request = "DROP TABLE " + _key + " ;";
     l_bufferPGSQLRequests.push_front(TempSQLReq);
 }
@@ -863,7 +862,7 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
         }
     }
     else{
-        o_Logs.logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query);      //TODO peut-être LOG ça dans un fichier de logs de requetes?
+        o_Logs.logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query, o_Logs.ERROR);      //TODO peut-être LOG ça dans un fichier de logs de requetes?
     }
 }
 #pragma endregion CQL_SQL

@@ -9,7 +9,6 @@
 #include <sys/types.h>
 #include "c_Socket.h"
 
-
 typedef int SOCKET;
 
 #pragma region Global

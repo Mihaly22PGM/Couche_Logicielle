@@ -18,3 +18,13 @@ void c_Logs::logs(std::string msg, LogStatus LogStatusText)
     }
     file.close();
 }
+void c_Logs::timestamp(std::string msg, clock_t stop){
+    diff = (double) stop-start;
+    std::ofstream file(fileLog, std::ios_base::app);
+    std::cout<<"TimeStamp : "<<msg<<", time : "<<diff<<std::endl; 
+    start = stop;
+    // if (file){
+        
+    // }
+    // std::cout << "Time to fill and iterate a vector of " << std::setw(9)<< size << " ints : " << diff.count() << " s\n";
+}
