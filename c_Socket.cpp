@@ -5759,19 +5759,26 @@ SOCKET INITSocket(SOCKET sockServer, std::string mode){
 		while(i<15){
 			int server = recv(sockClient, buffClient, sizeof(buffClient),0);
 			if(server>0){
+        if(i==3){
+			      memcpy(&fr_connectionBench[i][2], &buffClient[2], 2);
+			  }
 				write(sockClient, fr_connectionBench[i],fr_lengthBench[i]);
 				i++;
 			}
-			if(i==6){
-				for (int j=0; j<7; j++){
+			if(i == 2){
+				write(sockClient, fr_connectionBench[i],fr_lengthBench[i]);
+				i++;
+			}
+			else if(i==5){
+				for (int j=0; j<8; j++){
 					write(sockClient, fr_connectionBench[i], fr_lengthBench[i]);
 					i++;
 				}
-				sockDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
 			}
 			else if(i==14){
 				write(sockClient, fr_connectionBench[i], fr_lengthBench[i]);
 				i++;
+				sockDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
 			}
 		}
 		while(i<17){

@@ -80,6 +80,7 @@ vector<std::string> fields, values, columns;
 
 SOCKET sockServer;
 SOCKET sockDataClient;
+unsigned char UseResponse[] = {0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62};
 
 //threads
 pthread_t th_FrameClient;
@@ -230,6 +231,7 @@ void* TraitementFrameData(void *arg){
                     memcpy(header,l_bufferFrames.back()+sommeSize,13);	    
                     s_Requests.size = (unsigned int)header[11+sommeSize] * 256 + (unsigned int)header[12+sommeSize];
                     if((unsigned int)header[10+sommeSize]>0){
+                        //logs("Test");
                         logs("TraitementFrameData() : Oupsi, frame un peu longue, adapter le code si cette erreur apparait", ERROR);
                         exit (EXIT_FAILURE);
                     }
@@ -525,6 +527,10 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
             cerr << "ERREUR : " << e.what() << endl;
             logs(e.what());
         }
+    }
+    else if (LowerRequest.substr(0, 3) == "use"){
+        memcpy(&UseResponse[2], &Request_incoming_cql_query.stream,2);
+        write(sockDataClient, UseResponse, sizeof(UseResponse));
     }
     else{
         logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query, ERROR);      //TODO peut-être LOG ça dans un fichier de logs de requetes?
