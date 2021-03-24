@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <iostream>
 #include <errno.h>
-// #include <cstring>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -15,7 +15,7 @@
 typedef int SOCKET;
 
 SOCKET CreateSocket();                  //Socket creation
-SOCKET INITSocket(SOCKET sockServer);   //Socket initialisation 
+SOCKET INITSocket(SOCKET, std::string); //Socket initialisation 
 void *TraitementFrameClient(void*);     //Response to isalive requests
 in_addr GetIPAdress();                  //Get the IP Adress of the server
 

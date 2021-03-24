@@ -49,7 +49,6 @@ struct SQLRequests{
     char stream[2];
     string request;
 };
-struct sockaddr_un s_PGSQL_addr;
 
 struct server
 {
@@ -61,37 +60,38 @@ struct server
 #pragma endregion Structures
 
 #pragma region Global
-Requests s_Requests;
+bool bl_UseReplication = false;
+bool bl_lastRequestFrame = false;
+const char *conninfo;
 char buffData[1024];
-char CQLResponse[1024];
 char header[12];
+
+Requests s_Requests;
+
 std::list<char*> l_bufferFrames;
 std::list<Requests> l_bufferRequests;
 std::list<SQLRequests> l_bufferPGSQLRequests;
-std::string incoming_cql_query, translated_sql_query;
 size_t from_sub_pos, where_sub_pos, limit_sub_pos, set_sub_pos, values_sub_pos = 0;
 std::string select_clause, from_clause, where_clause, update_clause, set_clause, insert_into_clause, values_clause, delete_clause = "";
 std::string table, key = "";
-vector<std::string> fields, values, columns;
-std::string returned_select_sql_query = "";
 std::string LowerRequest = "";
 std::string _incoming_cql_query = "";
+vector<std::string> fields, values, columns;
 
-bool bl_UseReplication = false;
-bool bl_lastRequestFrame = false;
 SOCKET sockServer;
 SOCKET sockDataClient;
+
+//threads
 pthread_t th_FrameClient;
 pthread_t th_FrameData;
 pthread_t th_Requests;
 pthread_t th_PostgreSQL;
+pthread_t th_Redirecting;
+pthread_t th_INITSocket_Redirection;
 
-const char *conninfo;
 PGconn *conn;
 PGresult *res;
 
-//Variables
-//int server_count = 6;
 int server_count = 2;
 server actual_server;
 server neighbor_server_1;
@@ -114,34 +114,30 @@ server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };
 #pragma region Prototypes
 void *TraitementFrameData(void*);
 void *TraitementRequests(void*);
-void ConnexionPGSQL();
 void *SendPGSQL(void*);
-void exit_prog(int CodeEXIT);
-// void logs(std::string msg, LogStatus LogStatusText = LogStatus::INFO);
-void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2]);
-void create_update_sql_query(string _table, string _key, vector<string> _values, char id[2]);
-void create_insert_sql_query(string _table, string _key, vector<string> _columns,  vector<string> _values, char id[2]);
-void create_delete_sql_query(string _table, string _key, char id[2]);
-vector<string> extract_select_data(string _select_clause);
-string extract_from_data(string _form_clause);
-string extract_where_data(string _where_clause);
-string extract_update_data(string _update_clause);
-vector<string> extract_set_data(string _set_clause);
-string extract_insert_into_data_table(string _insert_into_clause);
-vector<string> extract_insert_into_data_columns(string _insert_into_clause);
-vector<string> extract_values_data(string _values_clause);
-string extract_delete_data(string _delete_clause);
-void CQLtoSQL(SQLRequests Request_incoming_cql_query);
-int string_Hashing(string _key_from_cql_query);
-// string get_ip_from_actual_server();
-int connect_to_server(server _server_to_connect, int _port_to_connect);
-void send_to_server(int _socketServer, string _query_to_send);
-void* INITSocket_Redirection(void* arg);
-void* redirecting(void* arg);
+void *INITSocket_Redirection(void*);
+void *redirecting(void*);
+void CQLtoSQL(SQLRequests);
+void ConnexionPGSQL();
+void exit_prog(int);
+void send_to_server(int, string);
 void server_identification();
-string key_extractor(string _incoming_cql_query);
-pthread_t th_Redirecting;
-pthread_t th_INITSocket_Redirection;
+void create_select_sql_query(string, string , vector<string>, char[2]);
+void create_update_sql_query(string, string, vector<string>, char[2]);
+void create_insert_sql_query(string, string, vector<string>,  vector<string>, char[2]);
+void create_delete_sql_query(string, string, char[2]);
+int string_Hashing(string);
+int connect_to_server(server, int);
+string extract_from_data(string);
+string extract_where_data(string);
+string extract_update_data(string);
+string extract_insert_into_data_table(string);
+string extract_delete_data(string);
+string key_extractor(string);
+vector<string> extract_insert_into_data_columns(string);
+vector<string> extract_values_data(string);
+vector<string> extract_select_data(string);
+vector<string> extract_set_data(string);
 #pragma endregion Prototypes
 
 int main(int argc, char *argv[])
@@ -196,7 +192,7 @@ int main(int argc, char *argv[])
     
     //Réception des frames en continu et mise en buffer
     sockServer = CreateSocket();
-    sockDataClient = INITSocket(sockServer);
+    sockDataClient = INITSocket(sockServer, argv[2]);
     CheckThreadCreation += pthread_create(&th_FrameClient, NULL, TraitementFrameClient, NULL);
     
     if (CheckThreadCreation !=0){
@@ -365,6 +361,177 @@ void *SendPGSQL(void *arg){     //TODO logs not done yet, waiting for "prod" cod
 #pragma endregion PostgreSQL
 
 #pragma region CQL_SQL
+void CQLtoSQL(SQLRequests Request_incoming_cql_query)
+{
+    fields.clear();
+    values.clear();
+    columns.clear();
+    _incoming_cql_query = Request_incoming_cql_query.request;
+    LowerRequest = _incoming_cql_query;
+    std::transform(LowerRequest.begin(), LowerRequest.end(), LowerRequest.begin(), [](unsigned char c){ return std::tolower(c); });
+    if (LowerRequest.substr(0, 6) == "select")
+    {
+        try{
+            where_sub_pos = limit_sub_pos = sizeof(LowerRequest)-1;
+            cout << "Type de la requete : SELECT" << endl;
+            if(LowerRequest.find("from ") == _NPOS)
+                throw string("Erreur : Pas de FROM dans la requete");
+            else{
+                from_sub_pos = LowerRequest.find("from ");
+                select_clause = _incoming_cql_query.substr(6, from_sub_pos - 6);
+                fields = extract_select_data(select_clause);
+            }
+            if(LowerRequest.find("where ") == _NPOS){
+                throw string("Erreur : Pas de WHERE dans la requete");  //TODO gérer les cas sans WHERE?
+            }
+            else{
+                where_sub_pos = LowerRequest.find("where ");
+                from_clause = _incoming_cql_query.substr(from_sub_pos, where_sub_pos - from_sub_pos);
+                table = extract_from_data(from_clause);
+            }
+            if(LowerRequest.find("limit ") != _NPOS){
+                limit_sub_pos = LowerRequest.find("limit ");
+                where_clause = _incoming_cql_query.substr(where_sub_pos, limit_sub_pos - where_sub_pos);
+                key = extract_where_data(where_clause);
+            }
+            //IF WHERE && !LIMIT
+            else if(where_sub_pos +1 < LowerRequest.length()){
+                where_clause = _incoming_cql_query.substr(where_sub_pos, _NPOS);
+                key = extract_where_data(where_clause);
+            }
+            //Affichage des paramètres
+            cout << "Table: " << table;
+            if(key != "")
+                cout<<" - Key: " << key << " Fields : ";
+            for (string field : fields)
+            {
+                cout << field << " __ ";
+            }
+            cout << endl;
+            //Appel de la fonction de conversion pour du RWCS
+            create_select_sql_query(table, key, fields, Request_incoming_cql_query.stream);
+        }
+         catch(std::string const& chaine)
+        {
+            cerr << chaine << endl;
+            logs(chaine);
+        }
+        catch(std::exception const& e)
+        {
+            cerr << "ERREUR : " << e.what() << endl;
+            logs(e.what());
+        }
+    }
+    else if (LowerRequest.substr(0, 6) == "update")
+    {
+        try{
+            cout << "Type de la requete : UPDATE" << endl;
+            if(LowerRequest.find("set ") == _NPOS ||LowerRequest.find("where ") == _NPOS)   //If missing clause
+                throw string("Erreur : SET et|ou WHERE clauses missing");
+            //Get clauses positions
+            set_sub_pos = LowerRequest.find("set ");
+            where_sub_pos = LowerRequest.find("where ");
+            //Isolate clauses
+            table = _incoming_cql_query.substr(6, set_sub_pos - 6);
+            set_clause = _incoming_cql_query.substr(set_sub_pos, where_sub_pos - set_sub_pos);
+            where_clause = _incoming_cql_query.substr(where_sub_pos, _NPOS);
+            //Extract clauses           
+            // table = extract_update_data(update_clause);
+            key = extract_where_data(where_clause);
+            values = extract_set_data(set_clause);
+            //Print clauses
+            cout << "Table: " << table << " - Key: " << key << " Fields : ";
+            for (unsigned int i = 0; i < values.size(); i = i + 2)
+            {
+                cout << values[i] << " => " << values[i+1] << " __ ";
+            }
+            cout << endl;
+
+            //Call conversion function          
+            create_update_sql_query(table, key, values, Request_incoming_cql_query.stream);
+            // l_bufferPGSQLRequests.push_front(Request_incoming_cql_query);
+        }
+        catch(std::string const& chaine)
+        {
+            cerr << chaine << endl;
+            logs(chaine);
+        }
+        catch(std::exception const& e)
+        {
+            cerr << "ERREUR : " << e.what() << endl;
+            logs(e.what());
+        }
+    }
+    else if (LowerRequest.substr(0, 11) == "insert into")
+    {
+        try{
+            cout << "Type de la requete : INSERT" << endl;
+            if(LowerRequest.find("values ") == _NPOS)   //If missing clause
+                    throw string("Erreur : Missing Clause VALUES in INSERT INTO clause");
+            values_sub_pos = LowerRequest.find("values ");
+            //Isolate clauses
+            insert_into_clause = _incoming_cql_query.substr(11, values_sub_pos - 11);
+            values_clause = _incoming_cql_query.substr(values_sub_pos, _NPOS);
+            //On extrait les paramètres des clauses
+            table = extract_insert_into_data_table(insert_into_clause);
+            key = extract_values_data(values_clause)[0];
+            columns = extract_insert_into_data_columns(insert_into_clause);
+            values = extract_values_data(values_clause);
+            //Affichage des paramètres
+            cout << "Table: " << table << " - Key: " << key << " Fields : ";
+            for (unsigned int i = 0; i < columns.size(); i++)
+            {
+                cout << columns[i] << " => " << values[i] << " __ ";
+            }
+            cout << endl;
+            create_insert_sql_query(table, key, columns, values, Request_incoming_cql_query.stream);             //Appel de la fonction de conversion pour du RWCS
+        }
+        catch(std::string const& chaine)
+        {
+            cerr << chaine << endl;
+            logs(chaine);
+        }
+        catch(std::exception const& e)
+        {
+            cerr << "ERREUR : " << e.what() << endl;
+            logs(e.what());
+        }
+    }
+    else if (LowerRequest.substr(0, 6) == "delete")
+    {
+        try{
+            cout << "Type de la requete : DELETE" << endl;
+            if(LowerRequest.find("where ") == _NPOS)   //If missing clause
+                throw string("Erreur : Missing Clause WHERE in DELETE clause");
+            where_sub_pos = LowerRequest.find("where ");
+            //On génère les clauses de la requête
+            table = _incoming_cql_query.substr(12, where_sub_pos - 12);
+            where_clause = _incoming_cql_query.substr(where_sub_pos, _NPOS);
+            //On extrait les paramètres des clauses
+            //table = extract_delete_data(delete_clause);
+            key = extract_where_data(where_clause);    
+            //Affichage des paramètres
+            cout << "Table: " << table << " - Key: " << key << endl;
+            //Appel de la fonction de conversion pour du RWCS
+            create_delete_sql_query(table, key, Request_incoming_cql_query.stream);
+        }
+        catch(std::string const& chaine)
+        {
+            cerr << chaine << endl;
+            logs(chaine);
+        }
+        catch(std::exception const& e)
+        {
+            cerr << "ERREUR : " << e.what() << endl;
+            logs(e.what());
+        }
+    }
+    else{
+        logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query, ERROR);      //TODO peut-être LOG ça dans un fichier de logs de requetes?
+    }
+    timestamp("CQLtoSQLDone", std::chrono::high_resolution_clock::now());
+}
+
 void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2])
 {
     SQLRequests TempSQLReq;
@@ -385,10 +552,10 @@ void create_select_sql_query(string _table, string _key, vector<string> _fields,
         TempSQLReq.request += ";";
     }
     l_bufferPGSQLRequests.push_front(TempSQLReq);
-    return ;
+    return;
 }
 
-void create_update_sql_query(string _table, string _key, vector<string> _values, char id[2] )
+void create_update_sql_query(string _table, string _key, vector<string> _values, char id[2])
 {
     //Comme on update uniquement la colonne value d'une table, il faut utiliser la clause CASE sur la valeur de la colonne column_name
     //Dans _values, les éléments "impairs" (le premier, troisième,...) sont les colonnes à update et les "pairs" sont les valeurs de ces colonnes
@@ -417,7 +584,7 @@ void create_update_sql_query(string _table, string _key, vector<string> _values,
         TempSQLReq.request += "'" + _values[0] + "' WHERE column_name = '" + _values[1] + "';";
     }
     l_bufferPGSQLRequests.push_front(TempSQLReq);
-    // return returned_update_sql_query;
+    return;
 }
 
 void create_insert_sql_query(string _table, string _key, vector<string> _columns,  vector<string> _values, char id[2])
@@ -425,12 +592,12 @@ void create_insert_sql_query(string _table, string _key, vector<string> _columns
     SQLRequests TempSQLReq;
     memcpy(TempSQLReq.stream, id,2);
     TempSQLReq.request = "CREATE TABLE " + _key + " (column_name varchar(255), value varchar(255)); ";
-    cout<<TempSQLReq.request<<endl;
+    // cout<<TempSQLReq.request<<endl;
     l_bufferPGSQLRequests.push_front(TempSQLReq);
     for (unsigned int i = 1; i < _values.size(); i++)
     {
         TempSQLReq.request = "INSERT INTO " + _key + " (column_name, value) VALUES('" + _columns[i] + "', '" + _values[i] + "'); ";
-        cout<<TempSQLReq.request<<endl;
+        // cout<<TempSQLReq.request<<endl;
         l_bufferPGSQLRequests.push_front(TempSQLReq);
     }
     //TODO
@@ -443,6 +610,7 @@ void create_delete_sql_query(string _table, string _key, char id[2])
     memcpy(TempSQLReq.stream, id,2);
     TempSQLReq.request = "DROP TABLE " + _key + " ;";
     l_bufferPGSQLRequests.push_front(TempSQLReq);
+    return;
 }
 
 vector<string> extract_select_data(string _select_clause)
@@ -699,177 +867,6 @@ string extract_delete_data(string _delete_clause)
 
     return delete_clause_data;
 }
-
-void CQLtoSQL(SQLRequests Request_incoming_cql_query)
-{
-    fields.clear();
-    values.clear();
-    columns.clear();
-    _incoming_cql_query = Request_incoming_cql_query.request;
-    LowerRequest = _incoming_cql_query;
-    std::transform(LowerRequest.begin(), LowerRequest.end(), LowerRequest.begin(), [](unsigned char c){ return std::tolower(c); });
-    if (LowerRequest.substr(0, 6) == "select")
-    {
-        try{
-            where_sub_pos = limit_sub_pos = sizeof(LowerRequest)-1;
-            cout << "Type de la requete : SELECT" << endl;
-            if(LowerRequest.find("from ") == _NPOS)
-                throw string("Erreur : Pas de FROM dans la requete");
-            else{
-                from_sub_pos = LowerRequest.find("from ");
-                select_clause = _incoming_cql_query.substr(6, from_sub_pos - 6);
-                fields = extract_select_data(select_clause);
-            }
-            if(LowerRequest.find("where ") == _NPOS){
-                throw string("Erreur : Pas de WHERE dans la requete");  //TODO gérer les cas sans WHERE?
-            }
-            else{
-                where_sub_pos = LowerRequest.find("where ");
-                from_clause = _incoming_cql_query.substr(from_sub_pos, where_sub_pos - from_sub_pos);
-                table = extract_from_data(from_clause);
-            }
-            if(LowerRequest.find("limit ") != _NPOS){
-                limit_sub_pos = LowerRequest.find("limit ");
-                where_clause = _incoming_cql_query.substr(where_sub_pos, limit_sub_pos - where_sub_pos);
-                key = extract_where_data(where_clause);
-            }
-            //IF WHERE && !LIMIT
-            else if(where_sub_pos +1 < LowerRequest.length()){
-                where_clause = _incoming_cql_query.substr(where_sub_pos, _NPOS);
-                key = extract_where_data(where_clause);
-            }
-            //Affichage des paramètres
-            cout << "Table: " << table;
-            if(key != "")
-                cout<<" - Key: " << key << " Fields : ";
-            for (string field : fields)
-            {
-                cout << field << " __ ";
-            }
-            cout << endl;
-            //Appel de la fonction de conversion pour du RWCS
-            create_select_sql_query(table, key, fields, Request_incoming_cql_query.stream);
-        }
-         catch(std::string const& chaine)
-        {
-            cerr << chaine << endl;
-            logs(chaine);
-        }
-        catch(std::exception const& e)
-        {
-            cerr << "ERREUR : " << e.what() << endl;
-            logs(e.what());
-        }
-    }
-    else if (LowerRequest.substr(0, 6) == "update")
-    {
-        try{
-            cout << "Type de la requete : UPDATE" << endl;
-            if(LowerRequest.find("set ") == _NPOS ||LowerRequest.find("where ") == _NPOS)   //If missing clause
-                throw string("Erreur : SET et|ou WHERE clauses missing");
-            //Get clauses positions
-            set_sub_pos = LowerRequest.find("set ");
-            where_sub_pos = LowerRequest.find("where ");
-            //Isolate clauses
-            table = _incoming_cql_query.substr(6, set_sub_pos - 6);
-            set_clause = _incoming_cql_query.substr(set_sub_pos, where_sub_pos - set_sub_pos);
-            where_clause = _incoming_cql_query.substr(where_sub_pos, _NPOS);
-            //Extract clauses           
-            // table = extract_update_data(update_clause);
-            key = extract_where_data(where_clause);
-            values = extract_set_data(set_clause);
-            //Print clauses
-            cout << "Table: " << table << " - Key: " << key << " Fields : ";
-            for (unsigned int i = 0; i < values.size(); i = i + 2)
-            {
-                cout << values[i] << " => " << values[i+1] << " __ ";
-            }
-            cout << endl;
-
-            //Call conversion function          
-            create_update_sql_query(table, key, values, Request_incoming_cql_query.stream);
-            // l_bufferPGSQLRequests.push_front(Request_incoming_cql_query);
-        }
-        catch(std::string const& chaine)
-        {
-            cerr << chaine << endl;
-            logs(chaine);
-        }
-        catch(std::exception const& e)
-        {
-            cerr << "ERREUR : " << e.what() << endl;
-            logs(e.what());
-        }
-    }
-    else if (LowerRequest.substr(0, 11) == "insert into")
-    {
-        try{
-            cout << "Type de la requete : INSERT" << endl;
-            if(LowerRequest.find("values ") == _NPOS)   //If missing clause
-                    throw string("Erreur : Missing Clause VALUES in INSERT INTO clause");
-            values_sub_pos = LowerRequest.find("values ");
-            //Isolate clauses
-            insert_into_clause = _incoming_cql_query.substr(11, values_sub_pos - 11);
-            values_clause = _incoming_cql_query.substr(values_sub_pos, _NPOS);
-            //On extrait les paramètres des clauses
-            table = extract_insert_into_data_table(insert_into_clause);
-            key = extract_values_data(values_clause)[0];
-            columns = extract_insert_into_data_columns(insert_into_clause);
-            values = extract_values_data(values_clause);
-            //Affichage des paramètres
-            cout << "Table: " << table << " - Key: " << key << " Fields : ";
-            for (unsigned int i = 0; i < columns.size(); i++)
-            {
-                cout << columns[i] << " => " << values[i] << " __ ";
-            }
-            cout << endl;
-            create_insert_sql_query(table, key, columns, values, Request_incoming_cql_query.stream);             //Appel de la fonction de conversion pour du RWCS
-        }
-        catch(std::string const& chaine)
-        {
-            cerr << chaine << endl;
-            logs(chaine);
-        }
-        catch(std::exception const& e)
-        {
-            cerr << "ERREUR : " << e.what() << endl;
-            logs(e.what());
-        }
-    }
-    else if (LowerRequest.substr(0, 6) == "delete")
-    {
-        try{
-            cout << "Type de la requete : DELETE" << endl;
-            if(LowerRequest.find("where ") == _NPOS)   //If missing clause
-                throw string("Erreur : Missing Clause WHERE in DELETE clause");
-            where_sub_pos = LowerRequest.find("where ");
-            //On génère les clauses de la requête
-            table = _incoming_cql_query.substr(12, where_sub_pos - 12);
-            where_clause = _incoming_cql_query.substr(where_sub_pos, _NPOS);
-            //On extrait les paramètres des clauses
-            //table = extract_delete_data(delete_clause);
-            key = extract_where_data(where_clause);    
-            //Affichage des paramètres
-            cout << "Table: " << table << " - Key: " << key << endl;
-            //Appel de la fonction de conversion pour du RWCS
-            create_delete_sql_query(table, key, Request_incoming_cql_query.stream);
-        }
-        catch(std::string const& chaine)
-        {
-            cerr << chaine << endl;
-            logs(chaine);
-        }
-        catch(std::exception const& e)
-        {
-            cerr << "ERREUR : " << e.what() << endl;
-            logs(e.what());
-        }
-    }
-    else{
-        logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query, ERROR);      //TODO peut-être LOG ça dans un fichier de logs de requetes?
-    }
-    timestamp("CQLtoSQLDone", std::chrono::high_resolution_clock::now());
-}
 #pragma endregion CQL_SQL
 
 #pragma region Utils
@@ -917,7 +914,7 @@ void server_identification()
 {
     char *s;
     s = inet_ntoa(GetIPAdress());
-    string ipAddr = std::string(s);
+    string ipAddr = string(s);
     logs("serveur_identification() : IP address : " + ipAddr);
     if (ipAddr == server_A.server_ip_address)
     {
@@ -963,35 +960,6 @@ void server_identification()
     socket_neighbor_1 = connect_to_server(neighbor_server_1, port);               //...
     //socket_neighbor_2 = connect_to_server(neighbor_server_2, port);
 }
-/*
-string get_ip_from_actual_server() {
-    struct ifaddrs* ifAddrStruct = NULL;
-    struct ifaddrs* ifa = NULL;
-    void* tmpAddrPtr = NULL;
-
-    string address;
-
-    getifaddrs(&ifAddrStruct);
-
-    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
-        if (!ifa->ifa_addr)
-            continue;
-
-        if (ifa->ifa_addr->sa_family == AF_INET) // check it is IP4
-        {
-            tmpAddrPtr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
-            char addressBuffer[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
-            if (strcmp(ifa->ifa_name, "eth0") == 0)
-                address = addressBuffer;
-        }
-    }
-    if (ifAddrStruct != NULL)
-        freeifaddrs(ifAddrStruct);
-
-    return address;
-}
-*/
 #pragma endregion Preparation
 
 #pragma region Server_connection
