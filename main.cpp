@@ -63,7 +63,7 @@ struct server
 bool bl_UseReplication = false;
 bool bl_lastRequestFrame = false;
 const char *conninfo;
-char buffData[1024];
+char buffData[10240];
 char header[12];
 
 Requests s_Requests;
@@ -222,26 +222,35 @@ int main(int argc, char *argv[])
 void* TraitementFrameData(void *arg){
     unsigned long int sommeSize = 0;
     try{
+        unsigned char test[10240];
         while(1){
             if(l_bufferFrames.size()>0){
                 timestamp("Detected Frame in buffer, starting reading", std::chrono::high_resolution_clock::now());
                 bl_lastRequestFrame = false;
                 sommeSize = 0;
+                memcpy(test,l_bufferFrames.back(),10240);
+                //for(int i=0; i<1024; i++){printf("%c",test[i]);};
                 while(bl_lastRequestFrame == false){
+                    cout<<"bite"<<endl;
+                    cout<<sommeSize<<endl;
                     memcpy(header,l_bufferFrames.back()+sommeSize,13);	    
-                    s_Requests.size = (unsigned int)header[11+sommeSize] * 256 + (unsigned int)header[12+sommeSize];
-                    if((unsigned int)header[10+sommeSize]>0){
+                    s_Requests.size = (unsigned int)header[11] * 256 + (unsigned int)header[12]; 
+                    printf("Message size : %d\r\n", s_Requests.size);
+                    /*if((unsigned int)header[10+sommeSize]>0){
                         //logs("Test");
                         logs("TraitementFrameData() : Oupsi, frame un peu longue, adapter le code si cette erreur apparait", ERROR);
                         exit (EXIT_FAILURE);
-                    }
-                    memcpy(s_Requests.request, l_bufferFrames.back()+13, s_Requests.size);
-                    memcpy(s_Requests.opcode, header+4+sommeSize,1);
-                    memcpy(s_Requests.stream, header+2+sommeSize,2);
+                    }*/
+                    memcpy(s_Requests.request, l_bufferFrames.back()+13+sommeSize, s_Requests.size);
+                    memcpy(s_Requests.opcode, &test[4+sommeSize],1);
+                    memcpy(s_Requests.stream, &test[2+sommeSize],2);
                     sommeSize += s_Requests.size+16;    //Request size + header size(13) + 3 hex values at the end of the request
-                    if (sizeof(l_bufferFrames.back()) <= sommeSize){
+                    cout<<sommeSize<<endl;
+                    //if (test[sommeSize] == 0x04){printf("couille\r\n");};
+                    if (test[sommeSize] == 0x00){
+                        cout<<"Fin"<<endl;
                         bl_lastRequestFrame = true;
-                    }
+                    }              
                     if (fichier){
                         fichier<<"------------Decoupage Requete------------"<<endl; //A supprimer absoloment en prod
                         fichier<<"Stream : "<<s_Requests.stream<<endl;
@@ -255,9 +264,10 @@ void* TraitementFrameData(void *arg){
                     else
                     l_bufferRequestsForActualServer.push_front(s_Requests);
                     memset(s_Requests.request,0,s_Requests.size);
-                    l_bufferFrames.pop_back();
                     timestamp("Request pushed", std::chrono::high_resolution_clock::now());
                 }
+                l_bufferFrames.pop_back();
+                memset(&test,0,10240);
                 timestamp("Frame OK", std::chrono::high_resolution_clock::now());
             }
         }
