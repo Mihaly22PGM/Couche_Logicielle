@@ -22,11 +22,8 @@
 #include <time.h>
 #include <chrono>
 #include <fstream>
-
-//ADDED
-#include <functional>       //...
+#include <functional>       
 #include <ifaddrs.h>
-//ENDADDED
 
 using namespace std;
 using std::string;
@@ -44,9 +41,6 @@ struct tm* timestamp;
 #pragma endregion DeleteForProd
 
 #pragma region Structures
-struct ThreadsInfos {
-
-};
 
 struct Requests {
     char opcode[1];
@@ -54,7 +48,10 @@ struct Requests {
     unsigned long int size;
     char request[1024];
 };
-
+struct SQLRequests {
+    char stream[2];
+    string request;
+};
 struct sockaddr_un s_PGSQL_addr;
 
 struct server
@@ -63,25 +60,25 @@ struct server
     int server_id;
     string server_ip_address;
 };
+
 #pragma endregion Structures
 
 #pragma region Global
 Requests s_Requests;
 char buffData[1024];
+char CQLResponse[1024];
 char header[12];
-
 std::list<char*> l_bufferFrames;
 std::list<Requests> l_bufferRequests;
-std::list<std::string> l_bufferPGSQLRequests;
-
+std::list<SQLRequests> l_bufferPGSQLRequests;
 std::string incoming_cql_query, translated_sql_query;
 size_t from_sub_pos, where_sub_pos, limit_sub_pos, set_sub_pos, values_sub_pos = 0;
 std::string select_clause, from_clause, where_clause, update_clause, set_clause, insert_into_clause, values_clause, delete_clause = "";
 std::string table, key = "";
 vector<std::string> fields, values, columns;
 std::string returned_select_sql_query = "";
-
 std::string LowerRequest = "";
+std::string _incoming_cql_query = "";
 
 bool bl_UseReplication = false;
 bool bl_lastRequestFrame = false;
@@ -91,8 +88,6 @@ pthread_t th_FrameClient;
 pthread_t th_FrameData;
 pthread_t th_Requests;
 pthread_t th_PostgreSQL;
-pthread_t th_Redirecting;
-pthread_t th_INITSocket_Redirection;
 
 const char* conninfo;
 PGconn* conn;
@@ -106,7 +101,7 @@ server neighbor_server_1;
 server neighbor_server_2;
 server server_to_redirect;
 int port = 8042;
-std::list<std::string> l_bufferRequestsForActualServer, l_bufferRequestsFromServer;
+std::list<Requests> l_bufferRequestsForActualServer, l_bufferRequestsFromServer;
 int socket_neighbor_1, socket_neighbor_2;
 
 //Liste des serveurs
@@ -117,10 +112,6 @@ server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };
 
-//ADDED
-std::vector <char*> vect_column_name;
-std::vector <char*> vect_value;
-//ENDADDED
 #pragma endregion Global
 
 #pragma region Prototypes
@@ -131,10 +122,10 @@ void* SendPGSQL(void*);
 void exit_prog(int CodeEXIT);
 void logs(std::string msg);
 
-void create_select_sql_query(string _table, string _key, vector<string> _fields);
-void create_update_sql_query(string _table, string _key, vector<string> _values);
-void create_insert_sql_query(string _table, string _key, vector<string> _columns, vector<string> _values);
-void create_delete_sql_query(string _table, string _key);
+void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2]);
+void create_update_sql_query(string _table, string _key, vector<string> _values, char id[2]);
+void create_insert_sql_query(string _table, string _key, vector<string> _columns, vector<string> _values, char id[2]);
+void create_delete_sql_query(string _table, string _key, char id[2]);
 vector<string> extract_select_data(string _select_clause);
 string extract_from_data(string _form_clause);
 string extract_where_data(string _where_clause);
@@ -144,8 +135,7 @@ string extract_insert_into_data_table(string _insert_into_clause);
 vector<string> extract_insert_into_data_columns(string _insert_into_clause);
 vector<string> extract_values_data(string _values_clause);
 string extract_delete_data(string _delete_clause);
-void CQLtoSQL(string _incoming_cql_query);
-
+void CQLtoSQL(SQLRequests Request_incoming_cql_query);
 int string_Hashing(string _key_from_cql_query);
 string get_ip_from_actual_server();
 int connect_to_server(server _server_to_connect, int _port_to_connect);
@@ -154,6 +144,8 @@ void* INITSocket_Redirection(void* arg);
 void* redirecting(void* arg);
 void server_identification();
 string key_extractor(string _incoming_cql_query);
+pthread_t th_Redirecting;
+pthread_t th_INITSocket_Redirection;
 #pragma endregion Prototypes
 
 int main(int argc, char* argv[])
@@ -206,18 +198,6 @@ int main(int argc, char* argv[])
         exit_prog(EXIT_FAILURE);
     }
 
-    if (bl_UseReplication) {
-        int c = 0;
-        while (c != 1)
-        {
-            cout << "tape 1 qd la redirection est lancee sur tous les serveurs" << endl;
-            cin >> c;
-            cout << endl;
-        }
-
-        cout << "OK" << endl;
-    }
-
     //Réception des frames en continu et mise en buffer
     INITSocket();
     pthread_create(&th_FrameClient, NULL, TraitementFrameClient, NULL);
@@ -255,7 +235,7 @@ void* TraitementFrameData(void* arg) {
                 }
                 if (fichier) {
                     fichier << "------------Decoupage Requete------------" << endl;
-                    fichier << "Stream : " << s_Requests.opcode << endl;
+                    fichier << "Stream : " << s_Requests.stream << endl;
                     fichier << "Opcode : " << s_Requests.opcode << endl;
                     fichier << "Taille Requete : " << s_Requests.size << endl;
                     fichier << "Requete : " << s_Requests.request << endl;
@@ -264,7 +244,7 @@ void* TraitementFrameData(void* arg) {
                 if (bl_UseReplication)
                     l_bufferRequests.push_front(s_Requests);
                 else
-                    l_bufferRequestsForActualServer.push_front(s_Requests.request);
+                    l_bufferRequestsForActualServer.push_front(s_Requests);
                 memset(s_Requests.request, 0, s_Requests.size);
                 l_bufferFrames.pop_back();
             }
@@ -274,10 +254,14 @@ void* TraitementFrameData(void* arg) {
 }
 
 void* TraitementRequests(void* arg) {
-    string tempReq;
+    SQLRequests tempReq;
+    char TempReq[1024];
     while (1) {
         if (l_bufferRequestsForActualServer.size() > 0) {
-            tempReq = l_bufferRequestsForActualServer.back();
+            strcpy(TempReq, l_bufferRequestsForActualServer.back().request);
+            tempReq.request = std::string(TempReq);
+            //memcpy(tempReq.opcode, l_bufferRequestsForActualServer.back().opcode, 1);
+            memcpy(tempReq.stream, l_bufferRequestsForActualServer.back().stream, 2);
             l_bufferRequestsForActualServer.pop_back();
             CQLtoSQL(tempReq);
         }
@@ -314,50 +298,127 @@ void ConnexionPGSQL() {
     PQclear(res);
 }
 
-void* SendPGSQL(void* arg) {
+void* SendPGSQL(void* arg)
+{
     PGresult* res;
     char requestPGSQL[1024];
-    while (1) {
-        if (l_bufferPGSQLRequests.size() > 0) {
-            strcpy(requestPGSQL, l_bufferPGSQLRequests.back().c_str());
-            cout << "SendPGSQL() COPY ok" << endl;
+    //requestPGSQL="NOK";
+    char stream[2];
+    while (1)
+    {
+        if (l_bufferPGSQLRequests.size() > 0)
+        {
+            strcpy(requestPGSQL, l_bufferPGSQLRequests.back().request.c_str());
+            memcpy(stream, l_bufferPGSQLRequests.back().stream, 2);
+            // cout<<"SendPGSQL() COPY ok"<<endl;
             l_bufferPGSQLRequests.pop_back();
             cout << requestPGSQL << endl;
+            // cout<<"Opcode : "<<opCode<<endl;
+            //cout<<"Stream : "<<std::hex<<stream[0]<<stream[1]<<endl;
+            cout << "Stream azerty: " << stream[0] << stream[1] << endl;
             res = PQexec(conn, requestPGSQL);
-            if (PQresultStatus(res) == PGRES_TUPLES_OK) {    //(uniquement pour les SELECT, sinon rien)
+            if (PQresultStatus(res) == PGRES_TUPLES_OK)     //(uniquement pour les SELECT, sinon rien)
+            {
                 //Affichage des En-têtes
                 int nFields = PQnfields(res);
                 printf("\n\n");
                 for (int i = 0; i < nFields; i++)
                     printf("%-15s", PQfname(res, i));
                 printf("\n\n");
-                //Affichage des résultats
+
+                //ADDED
+                unsigned char full_text[15000];
+                unsigned char response[38] = { 0x84, 0x00, stream[0], stream[1], 0x08, 0x00, 0x00, 'x', 'x', 0x00, 0x00, 0x00, 0x02, 0x00,
+                                            0x00, 0x00, 0x01, 0x00, 0x00, 'y', 'y', 0x00, 0x04, 0x79, 0x63, 0x73, 0x62, 0x00, 0x09, 0x75,
+                                            0x73, 0x65, 0x72, 0x74, 0x61, 0x62, 0x6c, 0x65 };
+                unsigned char perm_double_zero[2] = { 0x00, 0x00 };
+                unsigned char perm_column_separator[2] = { 0x00, 0x0d };
+                unsigned char perm_column_value_separation[4] = { 0x00, 0x00, 0x00, 0x01 };
+                unsigned char perm_null_element[4] = { 0xff, 0xff, 0xff, 0xff };
+
+                int pos = 0;
+
+                memcpy(full_text + pos, response, 38);
+                pos += 38;
+
+                //Toujours deux colonnes normalement      
+
+                //NOMS DE COLONNES    
                 for (int i = 0; i < PQntuples(res); i++)
                 {
-                    //ADDED
-                    for (int j = 0; j < nFields; j++)
-                    {
-                        printf("%-15s", PQgetvalue(res, i, j));
-                        //Toujours deux colonnes normalement!
-                        if (j % 2 == 0)
-                            vect_column_name.push_back(PQgetvalue(res, i, j));
-                        else
-                            vect_value.push_back(PQgetvalue(res, i, j));
-                    }
-                    //ENDADDED
-                    printf("\n");
+                    printf("%-15s", PQgetvalue(res, i, 0));
+                    unsigned char element_size[2] = { strlen(PQgetvalue(res, i, 0)) / 256, strlen(PQgetvalue(res, i, 0)) };
+
+                    memcpy(full_text + pos, element_size, 2);
+                    pos += 2;
+
+                    memcpy(full_text + pos, PQgetvalue(res, i, 0), strlen(PQgetvalue(res, i, 0)));
+                    pos += strlen(PQgetvalue(res, i, 0));
+
+                    memcpy(full_text + pos, perm_column_separator, 2);
+                    pos += 2;
                 }
-                //TODO DELETE PRINT AND SEND TO CASSANDRA RESPONSE
+
+                memcpy(full_text + pos, perm_column_value_separation, 4);
+                pos += 4;
+
+                //VALEURS
+                for (int i = 0; i < PQntuples(res); i++)
+                {
+                    printf("%-15s", PQgetvalue(res, i, 1));
+
+                    if (PQgetvalue(res, i, 1) != NULL)
+                    {
+                        memcpy(full_text + pos, perm_double_zero, 2);
+                        pos += 2;
+
+                        unsigned char element_size[2] = { strlen(PQgetvalue(res, i, 1)) / 256, strlen(PQgetvalue(res, i, 1)) };
+
+                        memcpy(full_text + pos, element_size, 2);
+                        pos += 2;
+
+                        memcpy(full_text + pos, PQgetvalue(res, i, 1), strlen(PQgetvalue(res, i, 1)));
+                        pos += strlen(PQgetvalue(res, i, 1));
+                    }
+                    else
+                    {
+                        memcpy(full_text + pos, perm_null_element, 4);
+                        pos += 4;
+                    }
+                }
+
+                full_text[7] = (pos - 9) / 256;
+                full_text[8] = pos - 9;
+                full_text[19] = nFields / 256;
+                full_text[20] = nFields;
+
+                write(sockDataClient, full_text, pos);
+
+                //ENDADDED
+
+                printf("\n");
             }
-            else if (PQresultStatus(res) == PGRES_COMMAND_OK) {
+
+            else if (PQresultStatus(res) == PGRES_COMMAND_OK)
+            {
                 cout << "Command OK" << endl;
+                //ADDED
+                unsigned char response[13] = { 0x84, 0x00 , stream[0], stream[1], 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };
+
+                response[0] = 0x69;
+
+                write(sockDataClient, response, 13);
+                //ENDADDED
                 //TODO SEND TO CASSANDRA OK
             }
-            else {
+
+            else
+            {
                 cout << "Erreur dans la requête" << endl;
                 cout << PQresultErrorMessage(res);
                 //TODO SEND TO CASSANDRA NOK
             }
+            //write(sockDataClient, &stream[0], 2);
 
             PQclear(res);
         }
@@ -367,78 +428,87 @@ void* SendPGSQL(void* arg) {
 #pragma endregion PostgreSQL
 
 #pragma region CQL_SQL
-void create_select_sql_query(string _table, string _key, vector<string> _fields)
+void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2])
 {
     //Pour une requête SELECT, on va prendre toutes les données des deux colonnes de la table où le column_name correspond au champ voulu
     //On considère que le nom de la table est juste la key CQL, mais on pourrait imaginer une concaténation de la table CQL et de la key CQL -> le paramètre _table n'est pas utilisé ici
     //Pour la mise en forme de la réponse au format CQL, on va faire ça au retour du RWCS, siinon la requête d'envoi (ici) aurait été trop complexe
-
-    returned_select_sql_query = "SELECT * FROM " + _key;
+    SQLRequests TempSQLReq;
+    memcpy(TempSQLReq.stream, id, 2);
+    TempSQLReq.request = "SELECT * FROM " + _key;
     //On regarde si, dans la requête CQL, on voulait prendre * ou des champs particuliers
-    if (_fields[0] != " * ")        //CHANGED
+    if (_fields[0] != "*")        //CHANGED
     {
-        returned_select_sql_query += " WHERE column_name IN ('";
+        TempSQLReq.request += " WHERE column_name IN ('";
         for (string field : _fields)
         {
-            returned_select_sql_query += field + "', '";
+            TempSQLReq.request += field + "', '";
         }
-        returned_select_sql_query = returned_select_sql_query.substr(0, returned_select_sql_query.length() - 3);
-        returned_select_sql_query += ");";
+        TempSQLReq.request = TempSQLReq.request.substr(0, TempSQLReq.request.length() - 3);
+        TempSQLReq.request += ");";
     }
-    else
-        returned_select_sql_query += ";";
-    l_bufferPGSQLRequests.push_front(returned_select_sql_query);
+    else {
+        TempSQLReq.request += ";";
+    }
+    l_bufferPGSQLRequests.push_front(TempSQLReq);
     return;
 }
 
-void create_update_sql_query(string _table, string _key, vector<string> _values)
+void create_update_sql_query(string _table, string _key, vector<string> _values, char id[2])
 {
     //Comme on update uniquement la colonne value d'une table, il faut utiliser la clause CASE sur la valeur de la colonne column_name
     //Dans _values, les éléments "impairs" (le premier, troisième,...) sont les colonnes à update et les "pairs" sont les valeurs de ces colonnes
-    string returned_update_sql_query = "UPDATE " + _key + " SET value = ";
+    SQLRequests TempSQLReq;
+    memcpy(TempSQLReq.stream, id, 2);
+    TempSQLReq.request = "UPDATE " + _key + " SET value = ";
     //On regarde si on a plusieurs champs à update
     if (_values.size() > 2)
     {
-        returned_update_sql_query += "(CASE ";
+        TempSQLReq.request += "(CASE ";
         for (unsigned int i = 0; i < _values.size(); i = i + 2)
         {
             //On CASE sur chaque colonne CQL, càd chaque valeur que peut prendre la colonne column_name
-            returned_update_sql_query += "when column_name = '" + _values[i] + "' then '" + _values[i + 1] + "' ";
+            TempSQLReq.request += "when column_name = '" + _values[i] + "' then '" + _values[i + 1] + "' ";
         }
-        returned_update_sql_query += "END) WHERE column_name IN ('";
+        TempSQLReq.request += "END) WHERE column_name IN ('";
         for (unsigned int i = 0; i < _values.size(); i = i + 2)
         {
-            returned_update_sql_query += _values[i] + "', '";
+            TempSQLReq.request += _values[i] + "', '";
         }
-        returned_update_sql_query = returned_update_sql_query.substr(0, returned_update_sql_query.length() - 4);
-        returned_update_sql_query += "');";
+        TempSQLReq.request = TempSQLReq.request.substr(0, TempSQLReq.request.length() - 4);
+        TempSQLReq.request += "');";
     }
     else
     {
-        returned_update_sql_query += "'" + _values[0] + "' WHERE column_name = '" + _values[1] + "';";
+        TempSQLReq.request += "'" + _values[0] + "' WHERE column_name = '" + _values[1] + "';";
     }
-    l_bufferPGSQLRequests.push_front(returned_update_sql_query);
+    l_bufferPGSQLRequests.push_front(TempSQLReq);
+    // return returned_update_sql_query;
 }
 
-void create_insert_sql_query(string _table, string _key, vector<string> _columns, vector<string> _values)
+void create_insert_sql_query(string _table, string _key, vector<string> _columns, vector<string> _values, char id[2])
 {
-    string returned_insert_sql_query = "CREATE TABLE " + _key + " (column_name varchar(255), value varchar(255)); ";
-    cout << returned_insert_sql_query << endl;
-    l_bufferPGSQLRequests.push_front(returned_insert_sql_query);
+    SQLRequests TempSQLReq;
+    memcpy(TempSQLReq.stream, id, 2);
+    TempSQLReq.request = "CREATE TABLE " + _key + " (column_name varchar(255), value varchar(255)); ";
+    cout << TempSQLReq.request << endl;
+    l_bufferPGSQLRequests.push_front(TempSQLReq);
     for (unsigned int i = 1; i < _values.size(); i++)
     {
-        returned_insert_sql_query = "INSERT INTO " + _key + " (column_name, value) VALUES('" + _columns[i] + "', '" + _values[i] + "'); ";
-        cout << returned_insert_sql_query << endl;
-        l_bufferPGSQLRequests.push_front(returned_insert_sql_query);
+        TempSQLReq.request = "INSERT INTO " + _key + " (column_name, value) VALUES('" + _columns[i] + "', '" + _values[i] + "'); ";
+        cout << TempSQLReq.request << endl;
+        l_bufferPGSQLRequests.push_front(TempSQLReq);
     }
-
+    //TODO
     //return returned_insert_sql_query;
 }
 
-void create_delete_sql_query(string _table, string _key)
+void create_delete_sql_query(string _table, string _key, char id[2])
 {
-    string returned_delete_sql_query = "DROP TABLE " + _key + " ;";
-    l_bufferPGSQLRequests.push_front(returned_delete_sql_query);
+    SQLRequests TempSQLReq;
+    memcpy(TempSQLReq.stream, id, 2);
+    TempSQLReq.request = "DROP TABLE " + _key + " ;";
+    l_bufferPGSQLRequests.push_front(TempSQLReq);
 }
 
 vector<string> extract_select_data(string _select_clause)
@@ -704,12 +774,12 @@ string extract_delete_data(string _delete_clause)
     return delete_clause_data;
 }
 
-void CQLtoSQL(string _incoming_cql_query) //TODO replace by void
+void CQLtoSQL(SQLRequests Request_incoming_cql_query) //TODO replace by void
 {
     fields.clear();
     values.clear();
     columns.clear();
-
+    _incoming_cql_query = Request_incoming_cql_query.request;
     LowerRequest = _incoming_cql_query;
     std::transform(LowerRequest.begin(), LowerRequest.end(), LowerRequest.begin(), [](unsigned char c) { return std::tolower(c); });
     if (LowerRequest.substr(0, 6) == "select")
@@ -751,9 +821,8 @@ void CQLtoSQL(string _incoming_cql_query) //TODO replace by void
                 cout << field << " __ ";
             }
             cout << endl;
-
             //Appel de la fonction de conversion pour du RWCS
-            create_select_sql_query(table, key, fields);
+            create_select_sql_query(table, key, fields, Request_incoming_cql_query.stream);
         }
         catch (std::string const& chaine)
         {
@@ -791,8 +860,9 @@ void CQLtoSQL(string _incoming_cql_query) //TODO replace by void
             }
             cout << endl;
 
-            //Call conversion function
-            create_update_sql_query(table, key, values);
+            //Call conversion function          
+            create_update_sql_query(table, key, values, Request_incoming_cql_query.stream);
+            // l_bufferPGSQLRequests.push_front(Request_incoming_cql_query);
         }
         catch (std::string const& chaine)
         {
@@ -827,7 +897,7 @@ void CQLtoSQL(string _incoming_cql_query) //TODO replace by void
                 cout << columns[i] << " => " << values[i] << " __ ";
             }
             cout << endl;
-            create_insert_sql_query(table, key, columns, values);             //Appel de la fonction de conversion pour du RWCS
+            create_insert_sql_query(table, key, columns, values, Request_incoming_cql_query.stream);             //Appel de la fonction de conversion pour du RWCS
         }
         catch (std::string const& chaine)
         {
@@ -856,7 +926,7 @@ void CQLtoSQL(string _incoming_cql_query) //TODO replace by void
             //Affichage des paramètres
             cout << "Table: " << table << " - Key: " << key << endl;
             //Appel de la fonction de conversion pour du RWCS
-            create_delete_sql_query(table, key);
+            create_delete_sql_query(table, key, Request_incoming_cql_query.stream);
         }
         catch (std::string const& chaine)
         {
@@ -892,14 +962,12 @@ void exit_prog(int codeEXIT) {
 
 #pragma endregion Utils
 
-
-
 #pragma region Listening
 void* INITSocket_Redirection(void* arg)
 {
     int socket_for_client, client_connection;
     struct sockaddr_in address;
-
+    Requests req;
     char buffer[1024];
 
     socket_for_client = socket(AF_INET, SOCK_STREAM, 0);
@@ -916,7 +984,8 @@ void* INITSocket_Redirection(void* arg)
     client_connection = accept(socket_for_client, (struct sockaddr*)NULL, NULL);
 
     recv(client_connection, buffer, sizeof(buffer), 0);
-    l_bufferRequestsForActualServer.push_front(buffer);
+    strcpy(req.request, buffer);
+    l_bufferRequestsForActualServer.push_front(req);
     cout << endl << buffer << endl;
 
     return NULL;
@@ -924,7 +993,7 @@ void* INITSocket_Redirection(void* arg)
 #pragma endregion Listening
 
 
-
+//ADD (TO END)
 #pragma region Preparation
 void server_identification()
 {
@@ -1042,13 +1111,19 @@ void send_to_server(int _socketServer, string _query_to_send)
 #pragma region Redirecting
 void* redirecting(void* arg)
 {
+    Requests req;
     string tempReq;
+    // char stream[2];
     while (1)
     {
         //On hash la clé extraite de la requête via la fonction string_Hashing()
         if (l_bufferRequests.size() > 0)
         {
             tempReq = l_bufferRequests.back().request;
+            strcpy(req.stream, l_bufferRequests.back().stream);
+            strcpy(req.opcode, l_bufferRequests.back().opcode);
+            // req.RequestNumber=stream;
+            // req.RequestOpcode='0x07';
             l_bufferRequests.pop_back();
             cout << "redirecting() pop back ok" << endl;
             string key_from_cql_query = key_extractor(tempReq);
@@ -1094,11 +1169,6 @@ void* redirecting(void* arg)
                     cout << "Requete a rediriger vers le voisin " << server_to_redirect.server_name << endl;
                     send_to_server(socket_neighbor_1, tempReq);
                 }
-                /*else if (server_to_redirect.server_id == neighbor_server_2.server_id)
-                {
-                    cout << "Requete a rediriger vers le voisin" << server_to_redirect.server_name << endl;
-                    send_to_server(socket_neighbor_2, l_bufferRequests.back().request);
-                }*/
                 //Si non on crée la connection et on envoie
                 else
                 {
@@ -1109,78 +1179,13 @@ void* redirecting(void* arg)
             else
             {
                 //Envoi vers PostgreSQL
-                l_bufferRequestsForActualServer.push_front(tempReq);
+                // req.Request=tempReq.c_str();
+                strcpy(req.request, tempReq.c_str());
+                l_bufferRequestsForActualServer.push_front(req);
                 cout << "Requete a envoyer vers PostgreSQL" << endl;
             }
             key_from_cql_query = "";
         }
-
-        /*if (l_bufferRequestsFromServer.size() > 0)
-        {
-            string key_from_cql_query = key_extractor(l_bufferRequestsFromServer.back());
-
-            int hashed_key = string_Hashing(key_from_cql_query);
-            cout << hashed_key << endl;
-
-            //On détermine le serveur vers lequel rediriger
-            int range_id = hashed_key % server_count;
-            cout << range_id << endl;
-
-            if (range_id == server_A.server_id)
-            {
-                server_to_redirect = server_A;
-            }
-            else if (range_id == server_B.server_id)
-            {
-                server_to_redirect = server_B;
-            }
-            else if (range_id == server_C.server_id)
-            {
-                server_to_redirect = server_C;
-            }
-            else if (range_id == server_D.server_id)
-            {
-                server_to_redirect = server_D;
-            }
-            else if (range_id == server_E.server_id)
-            {
-                server_to_redirect = server_E;
-            }
-            else if (range_id == server_F.server_id)
-            {
-                server_to_redirect = server_F;
-            }
-
-            //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
-            if (server_to_redirect.server_id != actual_server.server_id)
-            {
-                //On regarde si on doit rediriger vers un voisin
-                if (server_to_redirect.server_id == neighbor_server_1.server_id)              //...
-                {
-                    cout << "Requete a rediriger vers le voisin " << server_to_redirect.server_name << endl;
-                    send_to_server(socket_neighbor_1, l_bufferRequestsFromServer.back());
-                }*/
-                /*else if (server_to_redirect.server_id == neighbor_server_2.server_id)
-                {
-                    cout << "Requete a rediriger vers le voisin" << server_to_redirect.server_name << endl;
-                    send_to_server(socket_neighbor_2, l_bufferRequestsFromServer.back());
-                }*/
-                //Si non on crée la connection et on envoie
-                /*else
-                {
-                    cout << "Requete a rediriger vers " << server_to_redirect.server_name << endl;
-                    send_to_server(connect_to_server(server_to_redirect, port), l_bufferRequestsFromServer.back());
-                }
-            }
-            else
-            {
-                //Envoi vers PostgreSQL
-                l_bufferRequestsForActualServer.push_front(incoming_cql_query);
-                cout << "Requete a envoyer vers PostgreSQL" << endl;
-            }
-            key_from_cql_query = "";
-            l_bufferRequestsFromServer.pop_back();
-        }*/
     }
 
     return NULL;
