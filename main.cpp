@@ -50,6 +50,11 @@ struct Requests {
 };
 struct SQLRequests {
     char stream[2];
+    //ADDED
+    char key_name[255];
+    int pos_key;
+    char key[255];
+    //ENDADDED
     string request;
 };
 struct sockaddr_un s_PGSQL_addr;
@@ -75,6 +80,12 @@ std::string incoming_cql_query, translated_sql_query;
 size_t from_sub_pos, where_sub_pos, limit_sub_pos, set_sub_pos, values_sub_pos = 0;
 std::string select_clause, from_clause, where_clause, update_clause, set_clause, insert_into_clause, values_clause, delete_clause = "";
 std::string table, key = "";
+
+//ADDED
+int pos_key = 0;
+std::string key_name = "";
+//ENDADDED
+
 vector<std::string> fields, values, columns;
 std::string returned_select_sql_query = "";
 std::string LowerRequest = "";
@@ -122,13 +133,18 @@ void* SendPGSQL(void*);
 void exit_prog(int CodeEXIT);
 void logs(std::string msg);
 
-void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2]);
+void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2], string _key_name, int pos_key);     //CHANGED
 void create_update_sql_query(string _table, string _key, vector<string> _values, char id[2]);
 void create_insert_sql_query(string _table, string _key, vector<string> _columns, vector<string> _values, char id[2]);
 void create_delete_sql_query(string _table, string _key, char id[2]);
 vector<string> extract_select_data(string _select_clause);
 string extract_from_data(string _form_clause);
 string extract_where_data(string _where_clause);
+
+//ADDED
+string extract_key_name(string where_clause_data);
+//ENDADDED
+
 string extract_update_data(string _update_clause);
 vector<string> extract_set_data(string _set_clause);
 string extract_insert_into_data_table(string _insert_into_clause);
@@ -302,20 +318,30 @@ void* SendPGSQL(void* arg)
 {
     PGresult* res;
     char requestPGSQL[1024];
-    //requestPGSQL="NOK";
     char stream[2];
+    char key_name[255];
+    char key[255];
+    int pos_key;
     while (1)
     {
         if (l_bufferPGSQLRequests.size() > 0)
         {
             strcpy(requestPGSQL, l_bufferPGSQLRequests.back().request.c_str());
             memcpy(stream, l_bufferPGSQLRequests.back().stream, 2);
-            // cout<<"SendPGSQL() COPY ok"<<endl;
+            //ADDED
+            strcpy(key_name, l_bufferPGSQLRequests.back().key_name);
+            strcpy(key, l_bufferPGSQLRequests.back().key);
+            pos_key = l_bufferPGSQLRequests.back().pos_key;
+            //ENDADDED
+
             l_bufferPGSQLRequests.pop_back();
+
             cout << requestPGSQL << endl;
-            // cout<<"Opcode : "<<opCode<<endl;
-            //cout<<"Stream : "<<std::hex<<stream[0]<<stream[1]<<endl;
-            cout << "Stream azerty: " << stream[0] << stream[1] << endl;
+            cout << stream << endl;
+            cout << key_name << endl;
+            cout << key << endl;
+            cout << pos_key << endl;
+
             res = PQexec(conn, requestPGSQL);
             if (PQresultStatus(res) == PGRES_TUPLES_OK)     //(uniquement pour les SELECT, sinon rien)
             {
@@ -329,7 +355,7 @@ void* SendPGSQL(void* arg)
                 //ADDED
                 unsigned char full_text[15000];
                 unsigned char response[38] = { 0x84, 0x00, stream[0], stream[1], 0x08, 0x00, 0x00, 'x', 'x', 0x00, 0x00, 0x00, 0x02, 0x00,
-                                            0x00, 0x00, 0x01, 0x00, 0x00, 'y', 'y', 0x00, 0x04, 0x79, 0x63, 0x73, 0x62, 0x00, 0x09, 0x75,
+                                            0x00, 0x00, 0x01, 0x00, 0x00, (nFields + 1) / 256, nFields + 1, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62, 0x00, 0x09, 0x75,
                                             0x73, 0x65, 0x72, 0x74, 0x61, 0x62, 0x6c, 0x65 };
                 unsigned char perm_double_zero[2] = { 0x00, 0x00 };
                 unsigned char perm_column_separator[2] = { 0x00, 0x0d };
@@ -337,6 +363,7 @@ void* SendPGSQL(void* arg)
                 unsigned char perm_null_element[4] = { 0xff, 0xff, 0xff, 0xff };
 
                 int pos = 0;
+                int pos_key_run = pos_key;
 
                 memcpy(full_text + pos, response, 38);
                 pos += 38;
@@ -346,51 +373,99 @@ void* SendPGSQL(void* arg)
                 //NOMS DE COLONNES    
                 for (int i = 0; i < PQntuples(res); i++)
                 {
-                    printf("%-15s", PQgetvalue(res, i, 0));
-                    unsigned char element_size[2] = { strlen(PQgetvalue(res, i, 0)) / 256, strlen(PQgetvalue(res, i, 0)) };
+                    if (i == pos_key_run)
+                    {
+                        printf("%-15s", key_name);
 
-                    memcpy(full_text + pos, element_size, 2);
-                    pos += 2;
+                        unsigned char element_size[2] = { strlen(key_name) / 256, strlen(key_name) };
+                        memcpy(full_text + pos, element_size, 2);
+                        pos += 2;
 
-                    memcpy(full_text + pos, PQgetvalue(res, i, 0), strlen(PQgetvalue(res, i, 0)));
-                    pos += strlen(PQgetvalue(res, i, 0));
+                        memcpy(full_text + pos, key_name, strlen(key_name));
+                        pos += strlen(key_name);
 
-                    memcpy(full_text + pos, perm_column_separator, 2);
-                    pos += 2;
+                        memcpy(full_text + pos, perm_column_separator, 2);
+                        pos += 2;
+
+                        i--;
+                        pos_key_run = -1;
+                    }
+                    else
+                    {
+                        printf("%-15s", PQgetvalue(res, i, 0));
+
+                        unsigned char element_size[2] = { strlen(PQgetvalue(res, i, 0)) / 256, strlen(PQgetvalue(res, i, 0)) };
+                        memcpy(full_text + pos, element_size, 2);
+                        pos += 2;
+
+                        memcpy(full_text + pos, PQgetvalue(res, i, 0), strlen(PQgetvalue(res, i, 0)));
+                        pos += strlen(PQgetvalue(res, i, 0));
+
+                        memcpy(full_text + pos, perm_column_separator, 2);
+                        pos += 2;
+                    }
                 }
 
                 memcpy(full_text + pos, perm_column_value_separation, 4);
                 pos += 4;
+                pos_key_run = pos_key;
 
                 //VALEURS
                 for (int i = 0; i < PQntuples(res); i++)
                 {
-                    printf("%-15s", PQgetvalue(res, i, 1));
-
-                    if (PQgetvalue(res, i, 1) != NULL)
+                    if (i == pos_key_run)
                     {
-                        memcpy(full_text + pos, perm_double_zero, 2);
-                        pos += 2;
+                        printf("%-15s", key);
 
-                        unsigned char element_size[2] = { strlen(PQgetvalue(res, i, 1)) / 256, strlen(PQgetvalue(res, i, 1)) };
+                        if (key != NULL)
+                        {
+                            memcpy(full_text + pos, perm_double_zero, 2);
+                            pos += 2;
 
-                        memcpy(full_text + pos, element_size, 2);
-                        pos += 2;
+                            unsigned char element_size[2] = { strlen(key) / 256, strlen(key) };
 
-                        memcpy(full_text + pos, PQgetvalue(res, i, 1), strlen(PQgetvalue(res, i, 1)));
-                        pos += strlen(PQgetvalue(res, i, 1));
+                            memcpy(full_text + pos, element_size, 2);
+                            pos += 2;
+
+                            memcpy(full_text + pos, key, strlen(key));
+                            pos += strlen(key);
+                        }
+                        else
+                        {
+                            memcpy(full_text + pos, perm_null_element, 4);
+                            pos += 4;
+                        }
+
+                        i--;
+                        pos_key_run = -1;
                     }
                     else
                     {
-                        memcpy(full_text + pos, perm_null_element, 4);
-                        pos += 4;
+                        printf("%-15s", PQgetvalue(res, i, 1));
+
+                        if (PQgetvalue(res, i, 1) != NULL)
+                        {
+                            memcpy(full_text + pos, perm_double_zero, 2);
+                            pos += 2;
+
+                            unsigned char element_size[2] = { strlen(PQgetvalue(res, i, 1)) / 256, strlen(PQgetvalue(res, i, 1)) };
+
+                            memcpy(full_text + pos, element_size, 2);
+                            pos += 2;
+
+                            memcpy(full_text + pos, PQgetvalue(res, i, 1), strlen(PQgetvalue(res, i, 1)));
+                            pos += strlen(PQgetvalue(res, i, 1));
+                        }
+                        else
+                        {
+                            memcpy(full_text + pos, perm_null_element, 4);
+                            pos += 4;
+                        }
                     }
                 }
 
                 full_text[7] = (pos - 9) / 256;
                 full_text[8] = pos - 9;
-                full_text[19] = nFields / 256;
-                full_text[20] = nFields;
 
                 write(sockDataClient, full_text, pos);
 
@@ -404,8 +479,6 @@ void* SendPGSQL(void* arg)
                 cout << "Command OK" << endl;
                 //ADDED
                 unsigned char response[13] = { 0x84, 0x00 , stream[0], stream[1], 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };
-
-                response[0] = 0x69;
 
                 write(sockDataClient, response, 13);
                 //ENDADDED
@@ -428,13 +501,19 @@ void* SendPGSQL(void* arg)
 #pragma endregion PostgreSQL
 
 #pragma region CQL_SQL
-void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2])
+void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2], string _key_name, int pos_key) //CHANGED
 {
     //Pour une requête SELECT, on va prendre toutes les données des deux colonnes de la table où le column_name correspond au champ voulu
     //On considère que le nom de la table est juste la key CQL, mais on pourrait imaginer une concaténation de la table CQL et de la key CQL -> le paramètre _table n'est pas utilisé ici
     //Pour la mise en forme de la réponse au format CQL, on va faire ça au retour du RWCS, siinon la requête d'envoi (ici) aurait été trop complexe
     SQLRequests TempSQLReq;
     memcpy(TempSQLReq.stream, id, 2);
+    //ADDED
+    strcpy(TempSQLReq.key, _key.c_str());
+    strcpy(TempSQLReq.key_name, _key_name.c_str());
+    TempSQLReq.pos_key = pos_key;
+    //ENDADDED
+
     TempSQLReq.request = "SELECT * FROM " + _key;
     //On regarde si, dans la requête CQL, on voulait prendre * ou des champs particuliers
     if (_fields[0] != "*")        //CHANGED
@@ -563,8 +642,9 @@ string extract_from_data(string _form_clause)
     return form_clause_data;
 }
 
-string extract_where_data(string where_clause_data)
+string extract_where_data(string _where_clause_data)
 {
+    string where_clause_data = _where_clause_data;
     where_clause_data = where_clause_data.substr(6, _NPOS);
 
     size_t pos = 0;
@@ -582,6 +662,27 @@ string extract_where_data(string where_clause_data)
 
     return where_clause_data;
 }
+
+//ADDED
+string extract_key_name(string _where_clause_data)
+{
+    string where_clause_data = _where_clause_data;
+    where_clause_data = where_clause_data.substr(6, _NPOS);
+
+    size_t pos = 0;
+
+    where_clause_data.erase(remove(where_clause_data.begin(), where_clause_data.end(), '('), where_clause_data.end());
+    where_clause_data.erase(remove(where_clause_data.begin(), where_clause_data.end(), '\''), where_clause_data.end());
+    where_clause_data.erase(remove(where_clause_data.begin(), where_clause_data.end(), ' '), where_clause_data.end());
+    where_clause_data.erase(remove(where_clause_data.begin(), where_clause_data.end(), ';'), where_clause_data.end());
+    where_clause_data.erase(remove(where_clause_data.begin(), where_clause_data.end(), ')'), where_clause_data.end());
+
+    pos = where_clause_data.find('=');
+    where_clause_data = where_clause_data.substr(0, pos);
+
+    return where_clause_data;
+}
+//ENDADDED
 
 string extract_update_data(string _update_clause)
 {
@@ -806,11 +907,13 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query) //TODO replace by void
                 limit_sub_pos = LowerRequest.find("limit ");
                 where_clause = _incoming_cql_query.substr(where_sub_pos, limit_sub_pos - where_sub_pos);
                 key = extract_where_data(where_clause);
+                key_name = extract_key_name(where_clause);  //ADDED
             }
             //IF WHERE && !LIMIT
             else if (where_sub_pos + 1 < LowerRequest.length()) {
                 where_clause = _incoming_cql_query.substr(where_sub_pos, _NPOS);
                 key = extract_where_data(where_clause);
+                key_name = extract_key_name(where_clause);  //ADDED
             }
             //Affichage des paramètres
             cout << "Table: " << table;
@@ -821,8 +924,18 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query) //TODO replace by void
                 cout << field << " __ ";
             }
             cout << endl;
+
+            //ADDED
+            for (int i = 0; i < fields.size(); i++)
+            {
+                if (fields[i] == key_name)
+                {
+                    pos_key = i;
+                    i = fields.size();
+                }
+            }
             //Appel de la fonction de conversion pour du RWCS
-            create_select_sql_query(table, key, fields, Request_incoming_cql_query.stream);
+            create_select_sql_query(table, key, fields, Request_incoming_cql_query.stream, key_name, pos_key);
         }
         catch (std::string const& chaine)
         {
