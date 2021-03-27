@@ -42,7 +42,7 @@ ofstream fichier(nomFichier.c_str());
 struct Requests{
     char opcode[1];
     char stream[2];
-    unsigned long int size;
+    int size;
     char request[1024];
 };
 struct SQLRequests{
@@ -64,7 +64,7 @@ bool bl_UseReplication = false;
 bool bl_lastRequestFrame = false;
 const char *conninfo;
 char buffData[10240];
-char header[12];
+unsigned char header[13];
 
 Requests s_Requests;
 
@@ -223,41 +223,38 @@ void* TraitementFrameData(void *arg){
     unsigned long int sommeSize = 0;
     try{
         unsigned char test[10240];
+        int autoIncrementRequest = 0;
         while(1){
             if(l_bufferFrames.size()>0){
                 timestamp("Detected Frame in buffer, starting reading", std::chrono::high_resolution_clock::now());
+                memset(&test[0],0,10240);
+                memset(&header[0],0,13);
                 bl_lastRequestFrame = false;
                 sommeSize = 0;
                 memcpy(test,l_bufferFrames.back(),10240);
-                //for(int i=0; i<1024; i++){printf("%c",test[i]);};
+                l_bufferFrames.pop_back();
                 while(bl_lastRequestFrame == false){
-                    cout<<"bite"<<endl;
-                    cout<<sommeSize<<endl;
-                    memcpy(header,l_bufferFrames.back()+sommeSize,13);	    
-                    s_Requests.size = (unsigned int)header[11] * 256 + (unsigned int)header[12]; 
-                    printf("Message size : %d\r\n", s_Requests.size);
-                    /*if((unsigned int)header[10+sommeSize]>0){
-                        //logs("Test");
-                        logs("TraitementFrameData() : Oupsi, frame un peu longue, adapter le code si cette erreur apparait", ERROR);
-                        exit (EXIT_FAILURE);
-                    }*/
-                    memcpy(s_Requests.request, l_bufferFrames.back()+13+sommeSize, s_Requests.size);
+                    autoIncrementRequest++;
+                    memcpy(header,&test[sommeSize],13);    
+                    for(int i = 0; i<13; i++){printf("0x%x ", header[i]);}
+                    printf("hex : 0x%x 0x%x, %d + %d \r\n",header[11], header[12], (int)header[11] * 256, (int)header[12]);    //TODELETE
+                    s_Requests.size = (unsigned int)header[11] * 256 + (unsigned int)header[12];; 
+                    memcpy(s_Requests.request, &test[13+sommeSize], s_Requests.size);
                     memcpy(s_Requests.opcode, &test[4+sommeSize],1);
                     memcpy(s_Requests.stream, &test[2+sommeSize],2);
-                    sommeSize += s_Requests.size+16;    //Request size + header size(13) + 3 hex values at the end of the request
-                    cout<<sommeSize<<endl;
-                    //if (test[sommeSize] == 0x04){printf("couille\r\n");};
-                    if (test[sommeSize] == 0x00){
+                    sommeSize += s_Requests.size+13;    //Request size + header size(13) + 3 hex values at the end of the request
+                    std::cout<<"SommeSize : "<<sommeSize<<endl;
+                    if (test[sommeSize] == 0x00 && test[sommeSize+1] == 0x01 && test[sommeSize+2] == 0x00){
+                        sommeSize = sommeSize +3;
+                    }
+                    if(test[sommeSize] == 0x00){
                         cout<<"Fin"<<endl;
                         bl_lastRequestFrame = true;
-                    }              
+                    }
+                    else if(test[sommeSize-2] == 0x04)
+                      sommeSize = sommeSize-2;             
                     if (fichier){
-                        fichier<<"------------Decoupage Requete------------"<<endl; //A supprimer absoloment en prod
-                        fichier<<"Stream : "<<s_Requests.stream<<endl;
-                        fichier<<"Opcode : "<<s_Requests.opcode<<endl;
-                        fichier<<"Taille Requete : "<<s_Requests.size<<endl;
-                        fichier<<"Requete : "<<s_Requests.request<<endl;
-                        fichier<<"-------------------END-------------------"<<endl;
+                        fichier<<"Requete N° "<<autoIncrementRequest<<", Taille : "<<s_Requests.size<<" : "<<s_Requests.request<<endl;
                     }
                     if (bl_UseReplication)
                     l_bufferRequests.push_front(s_Requests);
@@ -266,10 +263,8 @@ void* TraitementFrameData(void *arg){
                     memset(s_Requests.request,0,s_Requests.size);
                     timestamp("Request pushed", std::chrono::high_resolution_clock::now());
                 }
-                l_bufferFrames.pop_back();
-                memset(&test,0,10240);
                 timestamp("Frame OK", std::chrono::high_resolution_clock::now());
-            }
+            }            
         }
     }
     catch(std::exception const& e){
@@ -364,7 +359,7 @@ void *SendPGSQL(void *arg){     //TODO logs not done yet, waiting for "prod" cod
                 //TODO SEND TO CASSANDRA NOK
             }
             //write(sockDataClient, &stream[0], 2);
-            write(sockDataClient, stream, 2);
+            //write(sockDataClient, stream, 2);
             PQclear(res);
         }
     }
@@ -379,6 +374,7 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
     values.clear();
     columns.clear();
     _incoming_cql_query = Request_incoming_cql_query.request;
+    cout<<_incoming_cql_query<<endl;
     LowerRequest = _incoming_cql_query;
     std::transform(LowerRequest.begin(), LowerRequest.end(), LowerRequest.begin(), [](unsigned char c){ return std::tolower(c); });
     if (LowerRequest.substr(0, 6) == "select")
@@ -476,7 +472,7 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
     }
     else if (LowerRequest.substr(0, 11) == "insert into")
     {
-        try{
+        /*try{
             cout << "Type de la requete : INSERT" << endl;
             if(LowerRequest.find("values ") == _NPOS)   //If missing clause
                     throw string("Erreur : Missing Clause VALUES in INSERT INTO clause");
@@ -507,7 +503,7 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
         {
             cerr << "ERREUR : " << e.what() << endl;
             logs(e.what());
-        }
+        }*/
     }
     else if (LowerRequest.substr(0, 6) == "delete")
     {

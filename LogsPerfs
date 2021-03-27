@@ -1,9 +1,529 @@
 TimeStamp : 0 sec, 0 ms, 0 us. Message : Starting Done
-TimeStamp : 3 sec, 487 ms, 78 us. Message : Received frame
+TimeStamp : 0 sec, 18 ms, 964 us. Message : Received frame
 TimeStamp : 0 sec, 0 ms, 2 us. Message : Frame pushed
-TimeStamp : 1616451036 sec, 384 ms, 697 us. Message : Detected Frame in buffer, starting reading
-TimeStamp : 0 sec, 0 ms, 39 us. Message : Request pushed
+TimeStamp : 18446744073709 sec, 551 ms, 595 us. Message : Detected Frame in buffer, starting reading
+TimeStamp : 0 sec, 0 ms, 81 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 81 us. Message : Frame for actual server
 TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame OK
-TimeStamp : 18446744073709 sec, 551 ms, 563 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 33 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 68 ms, 218 us. Message : Received frame
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Frame pushed
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Detected Frame in buffer, starting reading
+TimeStamp : 0 sec, 0 ms, 40 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 41 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 23 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 25 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 12 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 3 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 12 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 19 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 10 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 10 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 59 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 73 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 10 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 10 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 15 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 6 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 5 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 57 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 71 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 14 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 28 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 9 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 26 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 30 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 45 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
 TimeStamp : 0 sec, 0 ms, 2 us. Message : Calling CQLToSQL
-TimeStamp : 0 sec, 0 ms, 63 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 15 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 15 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 12 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 2 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 12 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 5 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 14 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 3 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 52 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 58 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 2 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 2 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 12 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 17 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 2 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 17 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 17 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 2 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 12 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 18 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 2 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 17 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 32 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 35 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 49 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 12 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 10 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 14 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 11 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 12 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 10 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 9 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 11 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 9 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 10 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 5 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame OK
+TimeStamp : 0 sec, 0 ms, 3 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 19 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 18 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 43 ms, 41 us. Message : Received frame
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Frame pushed
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Detected Frame in buffer, starting reading
+TimeStamp : 0 sec, 0 ms, 27 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 28 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 14 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 27 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 8 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 35 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 9 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 11 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 20 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 10 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 4 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 44 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 49 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 23 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 31 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 19 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 6 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 17 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 9 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 12 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 37 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 49 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 11 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 5 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 23 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 31 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 12 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 21 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 10 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 3 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 10 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 28 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 9 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 8 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 20 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 6 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 11 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 14 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 7 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 5 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 6 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 17 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 5 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 3 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 25 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 41 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 12 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 18 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 5 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 2 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 8 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 25 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 6 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 43 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 45 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 9 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 2 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 5 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 0 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 4 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 7 us. Message : Request pushed
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame OK
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 16 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 21 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 15 us. Message : CQLtoSQLDone
+TimeStamp : 0 sec, 0 ms, 0 us. Message : Frame for actual server
+TimeStamp : 0 sec, 0 ms, 1 us. Message : Calling CQLToSQL
+TimeStamp : 0 sec, 0 ms, 8 us. Message : CQLtoSQLDone
