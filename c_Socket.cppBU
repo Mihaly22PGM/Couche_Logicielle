@@ -2904,7 +2904,6 @@ unsigned char fr_connectionPSQL[][15000] = {
 0x12, 0x38, 0x34, 0x31, 0x33, 0x34, 0x32, 0x34, 0x35, 0x36, 0x39, 0x33, 0x30, 0x36, 0x36, 0x37,
 0x39, 0x34, 0x34, 0xff, 0xff, 0xff, 0xff}
 
-
 };
 
 unsigned char fr_connectionBench[][15000] = {
@@ -5911,7 +5910,7 @@ SOCKET INITSocket(SOCKET sockServer, std::string mode){
 	return sockDataClient;
 }
 
-in_addr GetIPAdress(){		//TODO repair or delete
+in_addr GetIPAdress(){
 	return serv_addr.sin_addr;
 }
 
