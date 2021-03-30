@@ -2,7 +2,7 @@
 EXEC = CoucheLogicielle
 
 #Source files
-SRC_FILES = main.cpp c_Socket.c
+SRC_FILES = main.cpp c_Socket.cpp c_Logs.cpp
 
 COURSE_DIR = /usr/include/postgresql
 
@@ -30,21 +30,22 @@ LDLIBS          = -lpq -lpthread -std=c++11
 # all is the default rule
 all: $(EXEC)
 
-
 # exec depends on the object files
 # It is made automagically using the LDFLAGS and LOADLIBES variables.
 # The .o files are made automagically using the CXXFLAGS variable.
 $(EXEC):
 	$(CXX) $(CXXFLAGS) -o $(EXEC) $(SRC_FILES) $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
-#all:	compile hexconverter
-#
-#compile:
-#	g++ main.cpp c_Socket.c -pthread -std=c++11 -o CoucheLogicielle -g
-#	touch Request.log
 hexconverter:
 	gcc Functionals/converterHEX.c -o HEXConverter
 clean:
 	rm -rf Request.log
 	rm -rf CoucheLogicielle
 	rm -rf HEXConverter
+	rm -rf Logs
+	rm -rf LogsPerfs
+
+logClean:
+	rm -rf Request.log
+	rm -rf Logs
+	rm -rf LogsPerfs
