@@ -109,6 +109,11 @@ pthread_t th_Requests;
 pthread_t th_PostgreSQL;
 pthread_t th_Redirecting;
 pthread_t th_INITSocket_Redirection;
+//ADDED
+pthread_t th_Listening_socket_neighbor_1;
+//pthread_t th_Listening_socket_neighbor_2;
+pthread_t th_Listening_socket_no_neighbor;
+//ENDADDED
 
 PGconn* conn;
 PGresult* res;
@@ -120,7 +125,7 @@ server neighbor_server_2;
 server server_to_redirect;
 int port = 8042;
 std::list<Requests> l_bufferRequestsForActualServer;    //CHANGED
-int socket_neighbor_1, socket_neighbor_2;
+int socket_neighbor_1, socket_neighbor_2, socket_no_neighbor;   //CHANGED
 
 //Liste des serveurs
 server server_A = { "RWCS-vServer1", 0, "192.168.82.55" };
@@ -161,6 +166,11 @@ vector<string> extract_insert_into_data_columns(string);
 vector<string> extract_values_data(string);
 vector<string> extract_select_data(string);
 vector<string> extract_set_data(string);
+//ADDED
+void* Listening_socket_neighbor_1(void*);
+void* Listening_socket_neighbor_2(void*);
+void* Listening_socket_no_neighbor(void*);
+//ENDADDED
 #pragma endregion Prototypes
 
 int main(int argc, char* argv[])
@@ -206,6 +216,11 @@ int main(int argc, char* argv[])
     CheckThreadCreation += pthread_create(&th_PostgreSQL, NULL, SendPGSQL, NULL);
     if (bl_UseReplication) {
         CheckThreadCreation += pthread_create(&th_Redirecting, NULL, redirecting, NULL);
+        //ADDED
+        CheckThreadCreation += pthread_create(&th_Listening_socket_neighbor_1, NULL, Listening_socket_neighbor_1, NULL);
+        //CheckThreadCreation += pthread_create(&th_Listening_socket_neighbor_2, NULL, Listening_socket_neighbor_2, NULL);
+        CheckThreadCreation += pthread_create(&th_Listening_socket_no_neighbor, NULL, Listening_socket_no_neighbor, NULL);
+        //ENDADDED
     }
     //Check if threads have been created
     if (CheckThreadCreation != 0) {
@@ -1323,7 +1338,10 @@ void* redirecting(void* arg)
                 else
                 {
                     cout << "Requete a rediriger vers " << server_to_redirect.server_name << endl;
-                    send_to_server(connect_to_server(server_to_redirect, port), tempReq);
+                    //ADDED
+                    socket_no_neighbor = connect_to_server(server_to_redirect, port);
+                    //ENDADDED
+                    send_to_server(socket_no_neighbor, tempReq);
                 }
             }
             else
@@ -1423,6 +1441,56 @@ string key_extractor(string _incoming_cql_query)
     else {
         logs("");
         exit(EXIT_FAILURE);
+    }
+}
+
+//ADDED
+void* Listening_socket_neighbor_1(void* arg)
+{
+    while (1)
+    {
+        if (socket_neighbor_1 != 0)
+        {
+            char buffer[1024];
+            recv(socket_neighbor_1, buffer, sizeof(buffer), 0);
+            int length = (buffer[7] * 256) + buffer[8] + 9;
+            unsigned char u_buffer[length];
+            memcpy(u_buffer, buffer, length);
+            for (int i = 0; i < sizeof(u_buffer); i++)
+                cout << "u_buffer:" << u_buffer[i] << endl;
+            write(sockDataClient, u_buffer, sizeof(u_buffer));
+            cout << "envoye de sock_neighbor_1 a sockDataClient" << endl;
+        }
+    }
+}
+
+void* Listening_socket_neighbor_2(void* arg)
+{
+    while (1)
+    {
+        if (socket_neighbor_2 != 0)
+        {
+            unsigned char buffer[1024];
+            recv(socket_neighbor_2, buffer, sizeof(buffer), 0);
+            write(sockDataClient, buffer, sizeof(buffer));
+            cout << buffer << endl;
+            cout << "envoye de sock_neighbor_2 a sockDataClient" << endl;
+        }
+    }
+}
+
+void* Listening_socket_no_neighbor(void* arg)
+{
+    while (1)
+    {
+        if (socket_no_neighbor != 0)
+        {
+            unsigned char buffer[1024];
+            recv(socket_no_neighbor, buffer, sizeof(buffer), 0);
+            write(sockDataClient, buffer, sizeof(buffer));
+            cout << buffer << endl;
+            cout << "envoye de socket_no_neighbor a sockDataClient" << endl;
+        }
     }
 }
 #pragma endregion Redirecting
