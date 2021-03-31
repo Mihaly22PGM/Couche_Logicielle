@@ -34,6 +34,7 @@ using std::string;
 #define _QUERY_STATEMENT 0x07
 #define _PREPARE_STATEMENT 0x09
 #define _EXECUTE_STATEMENT 0x0a
+
 typedef int SOCKET;
 
 #pragma region DeleteForProd
@@ -193,7 +194,8 @@ int main(int argc, char* argv[])
     else
         logs("main() : Starting Proxy...Standalone mode selected");
     ConnexionPGSQL();   //Connexion PGSQL
-
+    if (ConnPGSQLPrepStatements() == EXIT_FAILURE)
+        exit_prog(EXIT_FAILURE);
     if (bl_UseReplication) {
         server_identification();
         int b = 0;
@@ -309,8 +311,10 @@ void* TraitementFrameData(void* arg) {
                             else
                                 l_bufferRequestsForActualServer.push_front(s_Requests);
                         }
-                        else if(s_Requests.opcode[0] == _PREPARE_STATEMENT)       
-                            PrepStatementResponse(header, s_Requests.request);
+                        else if(s_Requests.opcode[0] == _PREPARE_STATEMENT){
+                              //for(int te = 0; te<1024;te++){cout<<s_Requests.request[te];}     
+                              PrepStatementResponse(header, s_Requests.request);
+                            }
                             // l_bufferPreparedReq.push_front(s_Requests);
                         else if (s_Requests.opcode[0] == _OPTIONS_STATEMENT)
                             logs("DO THIS FUCKING ISALIVE REQUEST FRANZICHE", WARNING);

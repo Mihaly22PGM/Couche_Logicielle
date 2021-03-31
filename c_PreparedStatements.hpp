@@ -9,6 +9,7 @@
 #include <future>
 #include <string.h>
 #include "libpq-fe.h"
+#include "c_Logs.hpp"
 
 struct PreparedReqStock{
     int ID;
@@ -20,6 +21,7 @@ struct PreparedStatAndResponse{
 };
 
 void PrepStatementResponse(unsigned char[13], char[1024]);
+int ConnPGSQLPrepStatements();
 // PreparedReqStock GetIDPreparedRequest();
 // std::string InsertPrepStatement();
 // PGresult PrepareInsertStatement();

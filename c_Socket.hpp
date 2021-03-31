@@ -18,5 +18,6 @@ SOCKET CreateSocket();                  //Socket creation
 SOCKET INITSocket(SOCKET, std::string); //Socket initialisation 
 void *TraitementFrameClient(void*);     //Response to isalive requests
 in_addr GetIPAdress();                  //Get the IP Adress of the server
+SOCKET GetSocket();
 
 #endif

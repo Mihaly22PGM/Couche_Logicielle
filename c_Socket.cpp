@@ -2,6 +2,7 @@
 
 #pragma region Global
 SOCKET sockClient = 0;
+SOCKET socketDataClient = 0;
 int portClients = 9042;
 struct sockaddr_in serv_addr;
 char buffClient[1024];	//TODO rename and set a lower value? To check
@@ -5845,7 +5846,6 @@ SOCKET CreateSocket(){
 }
 
 SOCKET INITSocket(SOCKET sockServer, std::string mode){
-	SOCKET sockDataClient;
 	listen(sockServer, 10);
     sockClient = accept(sockServer, (struct sockaddr*)NULL,NULL);
     int i = 0;
@@ -5873,13 +5873,13 @@ SOCKET INITSocket(SOCKET sockServer, std::string mode){
 			else if(i==14){
 				write(sockClient, fr_connectionBench[i], fr_lengthBench[i]);
 				i++;
-				sockDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
+				socketDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
 			}
 		}
 		while(i<17){
-			int server2 = recv(sockDataClient, buffClient, sizeof(buffClient),0);
+			int server2 = recv(socketDataClient, buffClient, sizeof(buffClient),0);
 			if(server2>0){
-				write(sockDataClient, fr_connectionBench[i],fr_lengthBench[i]);
+				write(socketDataClient, fr_connectionBench[i],fr_lengthBench[i]);
 				i++;
 			}
 		}
@@ -5896,19 +5896,19 @@ SOCKET INITSocket(SOCKET sockServer, std::string mode){
 					write(sockClient, fr_connectionPSQL[i], fr_lengthPGSQL[i]);
 					i++;
 				}
-				sockDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
+				socketDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
 			}
 		}
 		while(i<12){
-			int server2 = recv(sockDataClient, buffClient, sizeof(buffClient),0);
+			int server2 = recv(socketDataClient, buffClient, sizeof(buffClient),0);
 			if(server2>0){
-				write(sockDataClient, fr_connectionPSQL[i],fr_lengthPGSQL[i]);
+				write(socketDataClient, fr_connectionPSQL[i],fr_lengthPGSQL[i]);
 				i++;
 			}
 		}
 	}
     
-	return sockDataClient;
+	return socketDataClient;
 }
 
 in_addr GetIPAdress(){		//TODO repair or delete
@@ -5928,5 +5928,8 @@ void* TraitementFrameClient(void*){
     }
 }
 
+SOCKET GetSocket(){
+	return socketDataClient;
+}
 #pragma endregion Fonctions
 
