@@ -3,6 +3,7 @@
 #pragma region Global
 const std::string fileLog = "Logs";
 const std::string fileLogPerfs = "LogsPerfs";
+const std::string fileLogReqPGSQL = "LogsPGSQL";
 time_t tt;
 char *t;
 std::chrono::time_point<std::chrono::high_resolution_clock> previous;
@@ -38,5 +39,19 @@ void timestamp(std::string msg, std::chrono::high_resolution_clock::time_point s
         file<<"TimeStamp : "<<uint64_t(us_double.count())/1000000<<" sec, "<<(uint64_t(us_double.count())/1000)%1000<<" ms, "<<uint64_t(us_double.count())%1000<<" us. Message : "<<msg<<std::endl;
     }
     file.close();
-    start = std::chrono::high_resolution_clock::now();
+    //start = std::chrono::high_resolution_clock::now();
+}
+void logsPGSQL(std::string msg, LogStatus LogStatusText)
+{
+    std::ofstream file(fileLogReqPGSQL, std::ios_base::app);
+    if(file){
+        if(LogStatusText == LogStatus::INFO)
+            file<<"[INFO] "<<msg<<std::endl;
+        else if(LogStatusText == LogStatus::ERROR)
+            file<<"[ERROR] "<<msg<<std::endl;
+        else
+            file<<"[WARNING] "<<msg<<std::endl;
+    }
+    file.close();
+    return;
 }

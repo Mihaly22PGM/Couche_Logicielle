@@ -11,13 +11,15 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
+#include <fcntl.h> 
 
 typedef int SOCKET;
 
 SOCKET CreateSocket();                  //Socket creation
-SOCKET INITSocket(SOCKET, std::string); //Socket initialisation 
+SOCKET INITSocket(SOCKET/*, std::string*/); //Socket initialisation 
 void *TraitementFrameClient(void*);     //Response to isalive requests
 in_addr GetIPAdress();                  //Get the IP Adress of the server
-SOCKET GetSocket();
-
+SOCKET GetSocket();                     //Return data socket
+SOCKET GetSocketConn();
+void StopSocketThread();
 #endif

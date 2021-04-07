@@ -10,6 +10,8 @@
 #include <pthread.h>
 #include <list>
 #include <vector>
+#include <queue>
+#include <mutex>
 #include <string.h>
 #include <algorithm>
 #include <future>
@@ -20,6 +22,7 @@
 
 //Debug libraries
 #include <iostream>
+#include <sys/stat.h>
 #include <time.h>
 #include <chrono>
 #include <fstream>
@@ -34,11 +37,15 @@ using std::string;
 #define _QUERY_STATEMENT 0x07
 #define _PREPARE_STATEMENT 0x09
 #define _EXECUTE_STATEMENT 0x0a
-
+#define _THREDS_EXEC_NUMBER 6
 typedef int SOCKET;
 
 #pragma region DeleteForProd
 string const nomFichier("/home/tfe_rwcs/Couche_Logicielle/Request.log");
+const std::string& fileExistRun = "run";
+struct stat buffe;   
+// string const fileExistRun("run");
+ofstream fileToRun(fileExistRun.c_str());
 ofstream fichier(nomFichier.c_str());
 #pragma endregion DeleteForProd
 
@@ -48,7 +55,7 @@ struct Requests {
     char opcode[1];
     char stream[2];
     int size;
-    char request[1024];
+    unsigned char request[2048];
     //ADDED
     int origin; //0 = issu du serveur, 1 = issu de la redirection
     //ENDADDED
@@ -63,26 +70,31 @@ struct SQLRequests {
     int origin; //0 = issu du serveur, 1 = issu de la redirection
     //ENDADDED
 };
-
 struct server
 {
     string server_name;
     int server_id;
     string server_ip_address;
 };
+struct char_array{
+    char chararray[65536];
+};
 
 #pragma endregion Structures
 
 #pragma region Global
 bool bl_UseReplication = false;
+bool bl_UseBench = false;
+bool bl_Load = false;
 bool bl_lastRequestFrame = false;
-const char* conninfo;
-char buffData[10240];
+bool bl_loop = true;
+const char* conninfo = "user = postgres";
+char buffData[65536];
 unsigned char header[13];
 
 Requests s_Requests;
 
-std::list<char*> l_bufferFrames;
+std::queue<char_array> l_bufferFrames;
 std::list<Requests> l_bufferRequests;
 std::list<SQLRequests> l_bufferPGSQLRequests;
 size_t from_sub_pos, where_sub_pos, limit_sub_pos, set_sub_pos, values_sub_pos = 0;
@@ -114,6 +126,8 @@ pthread_t th_Requests;
 pthread_t th_PostgreSQL;
 pthread_t th_Redirecting;
 pthread_t th_INITSocket_Redirection;
+pthread_t th_PrepExec[_THREDS_EXEC_NUMBER];
+std::mutex mtx_q_frames;
 
 PGconn* conn;
 PGresult* res;
@@ -146,6 +160,8 @@ void* INITSocket_Redirection(void*);
 void* redirecting(void*);
 void CQLtoSQL(SQLRequests);
 void ConnexionPGSQL();
+void closeSockets();
+void closeThreads();
 void exit_prog(int);
 void send_to_server(int, string);
 void server_identification();
@@ -154,8 +170,9 @@ void create_update_sql_query(string, string, vector<string>, char[2], int); //CH
 void create_insert_sql_query(string, string, vector<string>, vector<string>, char[2], int);    //CHANGED
 void create_delete_sql_query(string, string, char[2], int); //CHANGED
 int string_Hashing(string);
-string get_ip_from_actual_server();
 int connect_to_server(server, int);
+bool exists_test();
+string get_ip_from_actual_server();
 string extract_from_data(string);
 string extract_where_data(string);
 string extract_key_name(string);
@@ -170,10 +187,18 @@ vector<string> extract_set_data(string);
 #pragma endregion Prototypes
 
 int main(int argc, char* argv[])
-{
-    if (argv[1] != NULL) {
+{   
+    if (argc == 4) {    //3 arguments
         if (std::string(argv[1]) == "oui")
             bl_UseReplication = true;
+        if(std::string(argv[2]) == "bench")
+            bl_UseBench = true;
+        if(std::string(argv[3]) == "load")
+            bl_Load = true;
+    }
+    else{
+        printf("Incorrect Parameters : ./CoucheLogicielle [oui|non] [bench|non] [load|run]\r\n");
+        exit_prog(EXIT_FAILURE);
     }
     int CheckThreadCreation = 0;
     if (bl_UseReplication) {
@@ -194,8 +219,10 @@ int main(int argc, char* argv[])
     else
         logs("main() : Starting Proxy...Standalone mode selected");
     ConnexionPGSQL();   //Connexion PGSQL
-    if (ConnPGSQLPrepStatements() == EXIT_FAILURE)
-        exit_prog(EXIT_FAILURE);
+    for(int i=0; i<_THREDS_EXEC_NUMBER; i++){
+        CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, NULL);
+    }
+
     if (bl_UseReplication) {
         server_identification();
         int b = 0;
@@ -221,7 +248,7 @@ int main(int argc, char* argv[])
 
     //Réception des frames en continu et mise en buffer
     sockServer = CreateSocket();
-    sockDataClient = INITSocket(sockServer, argv[2]);
+    sockDataClient = INITSocket(sockServer/*, argv[2]*/);
     CheckThreadCreation += pthread_create(&th_FrameClient, NULL, TraitementFrameClient, NULL);
 
     if (CheckThreadCreation != 0) {
@@ -233,126 +260,197 @@ int main(int argc, char* argv[])
     logs("main() : Starting Done");
     initClock(std::chrono::high_resolution_clock::now());
     timestamp("Starting Done", std::chrono::high_resolution_clock::now());
-    while (1) {
+    char_array frameToSend;
+    while (exists_test()) {
         sockServer = 0;
         sockServer = recv(sockDataClient, buffData, sizeof(buffData), 0);
         if (sockServer > 0) {
-            timestamp("Received frame", std::chrono::high_resolution_clock::now());
-            l_bufferFrames.push_front(buffData);
-            timestamp("Frame pushed", std::chrono::high_resolution_clock::now());
+            // timestamp("Received frame", std::chrono::high_resolution_clock::now());
+            memcpy(frameToSend.chararray, buffData, sizeof(buffData));
+            while (!mtx_q_frames.try_lock()){}
+            l_bufferFrames.push(frameToSend);
+            mtx_q_frames.unlock();
+            memset(buffData, 0, sizeof(buffData));
+            // timestamp("Frame pushed", std::chrono::high_resolution_clock::now());
         }
     }
-    logs("main() : Break input... Ending program");
+    printf("Fermeture du programme...\r\n");
+    Ending();
+    StopSocketThread();
+    bl_loop = false;
+    closeThreads();
+    logs("Fermeture des ports...");
+    //closeSockets();
+    logs("Libération mémoire");
+    //delete res;
+    PQfinish(conn);
+    // delete conninfo;
+    // delete[] argv;
+    // delete (void*) ConnPGSQLPrepStatements;
+    // delete (void*) INITSocket_Redirection;
+    // delete (void*) TraitementFrameData;
+    // delete (void*) TraitementRequests;
+    // delete (void*) SendPGSQL;
+    // delete (void*) redirecting;
+    // delete (void*) TraitementFrameClient;
+    printf("Fin du programme...\r\n");
+    logs("Fin du programme");
     return EXIT_SUCCESS;
 }
 
 #pragma region Requests
 void* TraitementFrameData(void* arg) {
-    unsigned long int sommeSize = 0;
+    unsigned int sommeSize = 0;
     bool bl_partialRequest = false;
-    char partialRequest[300];
-    char partialHeader[13];
+    unsigned char partialRequest[2048];
+    unsigned char partialHeader[13];
+    int sizeheader=0;
+    unsigned char test[65536];
+    unsigned char frameData[65536];
+    int autoIncrementRequest = 0;
+    PrepAndExecReq s_PrepAndExec_ToSend;
     try {
-        unsigned char test[10240];
-        int autoIncrementRequest = 0;
-        while (1) {
-            if (l_bufferFrames.size() > 0) {
-                timestamp("Detected Frame in buffer, starting reading", std::chrono::high_resolution_clock::now());
-                memset(&test[0], 0, 10240);
-                memset(&header[0], 0, 13);
-                bl_lastRequestFrame = false;
-                sommeSize = 0;
-                if (bl_partialRequest){     //TODO check when partial request pop, can not control that
-                    cout<<"AH"<<endl;
-                    memcpy(test, &partialHeader[0], 13);
-                    memcpy(&test[13], &partialRequest[13], 300);
-                    for(int i=13; i<300; i++){
-                        printf("0x%x ",test[i]);
-                        if(test[i] == 0x00){
-                            cout<<"ok?"<<endl;
-                            memcpy(&test[i], l_bufferFrames.back(), 10240-i);
-                            for(int j = 0;j<800; j++){printf("0x%x ",test[i]);}
-                            i = 300;
-                            bl_partialRequest = false;
-                            cout<<"ok"<<endl;
-                        }
-                    }
-                }
-                else
-                    memcpy(test, l_bufferFrames.back(), 10240);
-                l_bufferFrames.pop_back();
-                while (!bl_lastRequestFrame && !bl_partialRequest) {
-                    autoIncrementRequest++;
-                    memcpy(header, &test[sommeSize], 13);
-                    s_Requests.size = (unsigned int)header[11] * 256 + (unsigned int)header[12];;
-                    memcpy(s_Requests.request, &test[13 + sommeSize], s_Requests.size);
-                    memcpy(s_Requests.opcode, &test[4 + sommeSize], 1);
-                    memcpy(s_Requests.stream, &test[2 + sommeSize], 2);
-                    s_Requests.origin = 0;
-                    sommeSize += s_Requests.size + 13;    //Request size + header size(13) + 3 hex values at the end of the request
-                    if (fichier) {
-                        fichier << "Requete N° " << autoIncrementRequest << ", Taille : " << s_Requests.size << " : " << s_Requests.request << endl;
-                    }
-                    if (test[sommeSize-1] == 0x00)
-                        bl_partialRequest = true;
-                    if (test[sommeSize] == 0x00 && test[sommeSize + 1] == 0x01 && test[sommeSize + 2] == 0x00) {
-                        sommeSize = sommeSize + 3;
-                    }
-                    if (test[sommeSize] == 0x00)
-                        bl_lastRequestFrame = true; //Fin de la frame
-                    else if (test[sommeSize - 2] == 0x04)
-                        sommeSize = sommeSize - 2;
-                    if (!bl_partialRequest){
-                        if(s_Requests.opcode[0] == _QUERY_STATEMENT){
-                            if (s_Requests.request[0] == 'U' && s_Requests.request[1] == 'S' && s_Requests.request[2] == 'E') 
-                                l_bufferRequestsForActualServer.push_front(s_Requests);
-                            else if (bl_UseReplication)
-                                l_bufferRequests.push_front(s_Requests);
-                            else
-                                l_bufferRequestsForActualServer.push_front(s_Requests);
-                        }
-                        else if(s_Requests.opcode[0] == _PREPARE_STATEMENT){
-                              //for(int te = 0; te<1024;te++){cout<<s_Requests.request[te];}     
-                              PrepStatementResponse(header, s_Requests.request);
+        memset(&test[0], 0, sizeof(test));
+        memset(&header[0], 0, sizeof(header));
+        while (bl_loop) {
+            if (!l_bufferFrames.empty()) {
+                if(mtx_q_frames.try_lock()){
+                    memcpy(frameData, l_bufferFrames.front().chararray, sizeof(frameData));
+                    l_bufferFrames.pop();
+                    mtx_q_frames.unlock();
+                    sommeSize = 0;
+                    bl_lastRequestFrame = false;
+                    if (bl_partialRequest){
+                        if(partialHeader[4] == _EXECUTE_STATEMENT)
+                            sizeheader = 9;
+                        else
+                            sizeheader = 13;
+                        memcpy(test, &partialHeader[0], sizeheader);
+                        memcpy(&test[sizeheader], &partialRequest[0], sizeof(partialRequest)-sizeheader);                      
+                        for(unsigned int i=sizeheader; i<sizeof(partialRequest); i++){
+                            if(test[i] == 0x00 && test[i+1] ==0x00 && test[i+2] == 0x00 &&test[i+3] == 0x00){
+                                if(frameData[0] == 0x00){
+                                    for(int j = 0; j<2;j++){
+                                        if(frameData[j+1] !=0){i++;}  //If frame is cut between multiple 0x00, need always 3 0x00 to separate exec champs
+                                    }
+                                }
+                                else if(frameData[0] == 0x64 && frameData[102] == 0x00) //All champs starts with 0000 000d to separate them
+                                    i+=3;
+                                memcpy(&test[i], frameData, sizeof(frameData)-i);
+                                i = sizeof(partialRequest);
+                                bl_partialRequest = false;
                             }
-                            // l_bufferPreparedReq.push_front(s_Requests);
-                        else if (s_Requests.opcode[0] == _OPTIONS_STATEMENT)
-                            logs("DO THIS FUCKING ISALIVE REQUEST FRANZICHE", WARNING);
-                        timestamp("Request pushed", std::chrono::high_resolution_clock::now());
+                        }
                     }
                     else{
-                        logs("Partial request", WARNING);
-                        memcpy(partialRequest, &s_Requests.request[0], s_Requests.size);
-                        memcpy(partialHeader, &header, 13);
+                        memcpy(test, frameData, sizeof(frameData));
                     }
-                    memset(s_Requests.request, 0, s_Requests.size);
+                    while (!bl_lastRequestFrame && !bl_partialRequest){
+                        autoIncrementRequest++;
+                        memcpy(header, &test[sommeSize], 13);
+                        memcpy(s_Requests.opcode, &header[4], 1);
+                        memcpy(s_Requests.stream, &header[2], 2);
+                        s_Requests.origin = 0;                              //TODO delete?
+                        if(s_Requests.opcode[0] != _EXECUTE_STATEMENT){
+                            s_Requests.size = (unsigned int)header[11] * 256 + (unsigned int)header[12];
+                            memcpy(s_Requests.request, &test[13 + sommeSize], s_Requests.size);
+                            sommeSize += s_Requests.size + 13;              //Request size + header size(13)
+                        }
+                        else{
+                            s_Requests.size = (unsigned int)header[7] * 256 + (unsigned int)header[8];
+                            memcpy(s_Requests.request, &test[9 + sommeSize], s_Requests.size);
+                            sommeSize += s_Requests.size + 9;
+                        }
+                        if (test[sommeSize-1] == 0x00 && test[sommeSize-2] == 0x00 && test[sommeSize-3] ==0x00){          //Checking for partial request
+                            bl_partialRequest = true;
+                            autoIncrementRequest--;
+                        }
+                        if (!bl_partialRequest){
+                            switch (s_Requests.opcode[0])
+                            {
+                            case _QUERY_STATEMENT:
+                                if (test[sommeSize] == 0x00 && test[sommeSize + 1] == 0x01 && test[sommeSize + 2] == 0x00) {    //Checking for USE statements
+                                    sommeSize = sommeSize + 3;
+                                }
+                                if (test[sommeSize] == 0x00)        //Checking last frame
+                                    bl_lastRequestFrame = true;
+                                else if (test[sommeSize - 2] == 0x04)
+                                    sommeSize = sommeSize - 2;
+                                if (s_Requests.request[0] == 'U' && s_Requests.request[1] == 'S' && s_Requests.request[2] == 'E') 
+                                    l_bufferRequestsForActualServer.push_front(s_Requests);
+                                else if (bl_UseReplication)
+                                    l_bufferRequests.push_front(s_Requests);
+                                else
+                                    l_bufferRequestsForActualServer.push_front(s_Requests);
+                                break;
+                            case _EXECUTE_STATEMENT:
+                                memcpy(s_PrepAndExec_ToSend.head, header, sizeof(header));
+                                memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
+                                AddToQueue(s_PrepAndExec_ToSend);
+                                memset(s_PrepAndExec_ToSend.head, 0x00, sizeof(s_PrepAndExec_ToSend.head));
+                                memset(s_PrepAndExec_ToSend.CQLStatement, 0x00, sizeof(s_PrepAndExec_ToSend.CQLStatement));
+                                if (test[sommeSize] == 0x00)        //Checking last frame
+                                    bl_lastRequestFrame = true;
+                                break;
+                            case _PREPARE_STATEMENT:
+                                if (test[sommeSize] == 0x00)        //Checking last frame
+                                    bl_lastRequestFrame = true;
+                                memcpy(s_PrepAndExec_ToSend.head, header, sizeof(header));
+                                memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
+                                AddToQueue(s_PrepAndExec_ToSend);
+                                break;
+                            case _OPTIONS_STATEMENT:
+                                logs("DO THIS FUCKING ISALIVE REQUEST FRANZICHE", WARNING);
+                                break;
+                            default:
+                                logs("TraitementFrameData() : Type of request unknown : " + std::string((char*)s_Requests.request), ERROR);
+                                break;
+                            }
+                            // if (fichier) {
+                            //     fichier << "Requete N° " << autoIncrementRequest << ", Taille : " << s_Requests.size << " : " << s_Requests.request << endl;
+                            // }      
+                        }
+                        else{
+                            logs("Partial request", WARNING);
+                            memset(partialRequest, 0, sizeof(partialRequest));
+                            memset(partialHeader, 0, sizeof(partialHeader));
+                            memcpy(&partialRequest[0], &s_Requests.request[0], sizeof(partialRequest));
+                            memcpy(&partialHeader[0], &header[0], sizeof(partialHeader));
+                            if(partialRequest[0] == 0x00 && partialRequest[1] == 0x00 && partialRequest[2] == 0x00 && partialRequest[3] == 0x00)
+                                bl_partialRequest = false;
+                        }//Fin de requête
+                        memset(&s_Requests.request[0], 0x00, sizeof(s_Requests.request));
+                    }//Fin de frame
+                    memset(&test[0], 0, sizeof(test));
+                    memset(&header[0], 0, sizeof(header));
+                    // timestamp("Frame OK", std::chrono::high_resolution_clock::now());
                 }
-                timestamp("Frame OK", std::chrono::high_resolution_clock::now());
+                else{
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10)); //TODO maybe need to edit
+                }
             }
         }
     }
     catch (std::exception const& e) {
         logs("TraitementRequests() : " + std::string(e.what()), ERROR);
     }
-    pthread_exit(NULL);
+    logs("TraitementRequests() : Stopping thread...");
     pthread_exit(NULL);
 }
 
 void* TraitementRequests(void* arg) {
     SQLRequests tempReq;
-    char TempReq[1024];
+    char TempReq[2048];
     try {
-        while (1) {
+        while (bl_loop) {
             if (l_bufferRequestsForActualServer.size() > 0) {
-                timestamp("Frame for actual server", std::chrono::high_resolution_clock::now());
-                strcpy(TempReq, l_bufferRequestsForActualServer.back().request);
+                // timestamp("Frame for actual server", std::chrono::high_resolution_clock::now());
+                memcpy(TempReq, l_bufferRequestsForActualServer.back().request, 2048);
                 tempReq.request = std::string(TempReq);
                 memcpy(tempReq.stream, l_bufferRequestsForActualServer.back().stream, 2);
-                //ADDED
                 tempReq.origin = l_bufferRequestsForActualServer.back().origin;
-                //ENDADDED
                 l_bufferRequestsForActualServer.pop_back();
-                timestamp("Calling CQLToSQL", std::chrono::high_resolution_clock::now());
+                // timestamp("Calling CQLToSQL", std::chrono::high_resolution_clock::now());
                 CQLtoSQL(tempReq);
             }
         }
@@ -368,7 +466,6 @@ void* TraitementRequests(void* arg) {
 #pragma region PostgreSQL
 void ConnexionPGSQL() {
     //timestamp("Starting PGSQL Connexion", std::chrono::high_resolution_clock::now());
-    conninfo = "user = postgres";
     conn = PQconnectdb(conninfo);
     /* Check to see that the backend connection was successfully made */
     if (PQstatus(conn) != CONNECTION_OK)
@@ -399,7 +496,7 @@ void* SendPGSQL(void* arg)
     char key[255];
     int pos_key;
     int origin;
-    while (1)
+    while (bl_loop)
     {
         if (l_bufferPGSQLRequests.size() > 0)
         {
@@ -408,9 +505,7 @@ void* SendPGSQL(void* arg)
             strcpy(key_name, l_bufferPGSQLRequests.back().key_name);
             strcpy(key, l_bufferPGSQLRequests.back().key);
             pos_key = l_bufferPGSQLRequests.back().pos_key;
-            //ADDED
-            origin = l_bufferPGSQLRequests.back().origin;
-            //ENDADDED
+            origin = l_bufferPGSQLRequests.back().origin;   //TODO remove?
 
             l_bufferPGSQLRequests.pop_back();
 
@@ -435,7 +530,6 @@ void* SendPGSQL(void* arg)
                     0x84, 0x00, stream[0], stream[1], 0x08, 0x00, 0x00, 'x', 'x', 0x00, 0x00, 0x00, 0x02, 0x00,
                     0x00, 0x00, 0x01, 0x00, 0x00, (nFields + 1) / 256, nFields + 1, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62, 0x00, 0x09, 0x75,
                     0x73, 0x65, 0x72, 0x74, 0x61, 0x62, 0x6c, 0x65 };
-
                 int pos = 0;
                 int pos_key_run = pos_key;
 
@@ -553,13 +647,10 @@ void* SendPGSQL(void* arg)
             {
                 cout << "Command OK" << endl;
                 unsigned char response_cmd_ok[13] = { 0x84, 0x00 , stream[0], stream[1], 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };
-                //ADDED
                 if (origin == 0)
                     write(sockDataClient, response_cmd_ok, 13);
                 else if (origin == 1)
                     write(client_connection, response_cmd_ok, 13);
-                //ENDADDED
-                //TODO SEND TO CASSANDRA OK
             }
 
             else
@@ -568,11 +659,12 @@ void* SendPGSQL(void* arg)
                 cout << PQresultErrorMessage(res);
                 //TODO SEND TO CASSANDRA NOK
             }
-            //write(sockDataClient, &stream[0], 2);
-
             PQclear(res);
         }
     }
+    logs("SendPGSQL() : Fin du thread");
+    pthread_exit(NULL);
+    return NULL;
 }
 
 #pragma endregion PostgreSQL
@@ -584,7 +676,6 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
     values.clear();
     columns.clear();
     _incoming_cql_query = Request_incoming_cql_query.request;
-    //cout << _incoming_cql_query << endl;
     LowerRequest = _incoming_cql_query;
     std::transform(LowerRequest.begin(), LowerRequest.end(), LowerRequest.begin(), [](unsigned char c) { return std::tolower(c); });
     if (LowerRequest.substr(0, 6) == "select")
@@ -759,7 +850,7 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
     else {
         logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query, ERROR);      //TODO peut-être LOG ça dans un fichier de logs de requetes?
     }
-    timestamp("CQLtoSQLDone", std::chrono::high_resolution_clock::now());
+    // timestamp("CQLtoSQLDone", std::chrono::high_resolution_clock::now());
 }
 
 void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2], string _key_name, int pos_key, int origin) //CHANGED
@@ -1142,6 +1233,57 @@ void exit_prog(int codeEXIT) {
     exit(codeEXIT);
 }
 
+inline bool exists_test() {
+  return (stat (fileExistRun.c_str(), &buffe) == 0); 
+}
+
+void closeSockets(){
+    int closeSocketResult = 0;
+    closeSocketResult += close(sockDataClient);
+    closeSocketResult += close(GetSocketConn());
+    closeSocketResult += close(client_connection);
+    printf("Sock close : %d\r\n", closeSocketResult);
+    if(closeSocketResult == 0)
+        logs("Sockets closed");
+    else{
+        logs("Socket closing", ERROR);
+    }
+    return;
+}
+
+void closeThreads(){
+    // closethreads+= pthread_cancel(th_PrepExec1);
+    // closethreads+=pthread_cancel(th_PrepExec2);
+    // closethreads+=pthread_cancel(th_PrepExec3);
+    // closethreads+=pthread_cancel(th_PrepExec4);
+    // closethreads+=pthread_cancel(th_PrepExec5);
+    // closethreads+=pthread_cancel(th_PrepExec6);
+    // closethreads+=pthread_cancel(th_PrepExec7);
+    // closethreads+=pthread_cancel(th_PrepExec8);
+    for(int i=0; i<_THREDS_EXEC_NUMBER; i++){
+        pthread_join(th_PrepExec[i], NULL);
+    }
+    // pthread_join(th_PrepExec1, NULL);
+    // pthread_join(th_PrepExec2, NULL);
+    // pthread_join(th_PrepExec3, NULL);
+    // pthread_join(th_PrepExec4, NULL);
+    // pthread_join(th_PrepExec5, NULL);
+    // pthread_join(th_PrepExec6, NULL);
+    // pthread_join(th_PrepExec7, NULL);
+    // pthread_join(th_PrepExec8, NULL);
+    printf("1\r\n");
+    pthread_join(th_Requests, NULL);
+            printf("1\r\n");
+    pthread_join(th_PostgreSQL, NULL);
+        printf("1\r\n");
+    pthread_join(th_FrameClient, NULL);
+    printf("1\r\n");
+    pthread_join(th_FrameData, NULL);
+    printf("1\r\n");
+    pthread_join(th_Redirecting, NULL);
+     printf("1\r\n");
+    pthread_join(th_INITSocket_Redirection, NULL);
+}
 #pragma endregion Utils
 
 #pragma region Listening
@@ -1165,7 +1307,7 @@ void* INITSocket_Redirection(void* arg)
     client_connection = accept(socket_for_client, (struct sockaddr*)NULL, NULL);
 
     recv(client_connection, buffer, sizeof(buffer), 0);
-    strcpy(req.request, buffer);
+    memcpy(req.request, buffer, 1024);
     //ADDED
     req.origin = 1;
     //ENDADDED
@@ -1295,12 +1437,12 @@ void* redirecting(void* arg)
     Requests req;
     string tempReq;
     // char stream[2];
-    while (1)
+    while (bl_loop)
     {
         //On hash la clé extraite de la requête via la fonction string_Hashing()
         if (l_bufferRequests.size() > 0)
         {
-            tempReq = l_bufferRequests.back().request;
+            tempReq = (char*) l_bufferRequests.back().request;
             strcpy(req.stream, l_bufferRequests.back().stream);
             strcpy(req.opcode, l_bufferRequests.back().opcode);
             // req.RequestNumber=stream;
@@ -1359,16 +1501,18 @@ void* redirecting(void* arg)
             }
             else
             {
+                
                 //Envoi vers PostgreSQL
                 // req.Request=tempReq.c_str();
-                strcpy(req.request, tempReq.c_str());
+                memcpy(req.request, tempReq.c_str(), tempReq.length());
                 l_bufferRequestsForActualServer.push_front(req);
                 cout << "Requete a envoyer vers PostgreSQL" << endl;
             }
             key_from_cql_query = "";
         }
     }
-
+    logs("Redirecting() : Fin du thread");
+    pthread_exit(NULL);
     return NULL;
 }
 

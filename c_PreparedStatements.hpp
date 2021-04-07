@@ -6,23 +6,35 @@
 #include <unistd.h>
 #include <iostream>
 #include <list>
+#include <vector>
+#include <pthread.h>
 #include <future>
+#include <mutex>
+#include <queue>
 #include <string.h>
+#include <sstream>
 #include "libpq-fe.h"
 #include "c_Logs.hpp"
 
 struct PreparedReqStock{
-    int ID;
-    int Clause;
+    char ID[16];
+    char order[10];
 };
 struct PreparedStatAndResponse{
     PGresult *PGReq;
     std::string Response;
 };
+struct SQLPrepRequests {
+    char stream[2];
+    std::string request;
+};
+struct PrepAndExecReq{
+    unsigned char head[13];
+    unsigned char CQLStatement[2048];
+};
 
-void PrepStatementResponse(unsigned char[13], char[1024]);
-int ConnPGSQLPrepStatements();
-// PreparedReqStock GetIDPreparedRequest();
-// std::string InsertPrepStatement();
-// PGresult PrepareInsertStatement();
+void* ConnPGSQLPrepStatements(void*);
+void AddToQueue(PrepAndExecReq);
+void PrepExecStatement(PGconn*);
+void Ending();
 #endif

@@ -44,8 +44,10 @@ clean:
 	rm -rf HEXConverter
 	rm -rf Logs
 	rm -rf LogsPerfs
+	rm -rf LogsPGSQL
 
 logClean:
 	rm -rf Request.log
 	rm -rf Logs
 	rm -rf LogsPerfs
+	rm -rf LogsPGSQL

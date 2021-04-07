@@ -14,5 +14,6 @@ enum LogStatus {INFO, WARNING, ERROR};
 void logs(std::string, LogStatus LogStatusText = LogStatus::INFO);
 void initClock(std::chrono::high_resolution_clock::time_point);
 void timestamp(std::string, std::chrono::high_resolution_clock::time_point);
+void logsPGSQL(std::string, LogStatus LogStatusText = LogStatus::INFO);
 
 #endif
