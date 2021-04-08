@@ -1,4 +1,0 @@
-Sat Mar 27 21:17:23 2021 : [INFO] main() : Starting Proxy...Standalone mode selected
-Sat Mar 27 21:17:23 2021 : [INFO] ConnexionPGSQL() : Connexion to PostgreSQL sucess
-Sat Mar 27 21:17:28 2021 : [INFO] main() : Threads creation success
-Sat Mar 27 21:17:28 2021 : [INFO] main() : Starting Done
