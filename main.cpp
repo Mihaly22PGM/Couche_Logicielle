@@ -19,6 +19,9 @@
 #include "c_Logs.hpp"
 #include "c_PreparedStatements.hpp"
 #include "libpq-fe.h"
+//ADDED
+#include <fcntl.h>
+//ENDADDED
 
 //Debug libraries
 #include <iostream>
@@ -43,7 +46,7 @@ typedef int SOCKET;
 #pragma region DeleteForProd
 string const nomFichier("/home/tfe_rwcs/Couche_Logicielle/Request.log");
 const std::string& fileExistRun = "run";
-struct stat buffe;   
+struct stat buffe;
 // string const fileExistRun("run");
 ofstream fileToRun(fileExistRun.c_str());
 ofstream fichier(nomFichier.c_str());
@@ -56,9 +59,7 @@ struct Requests {
     char stream[2];
     int size;
     unsigned char request[2048];
-    //ADDED
     int origin; //0 = issu du serveur, 1 = issu de la redirection
-    //ENDADDED
 };
 struct SQLRequests {
     char stream[2];
@@ -66,17 +67,10 @@ struct SQLRequests {
     int pos_key;
     char key[255];
     string request;
-    //ADDED
     int origin; //0 = issu du serveur, 1 = issu de la redirection
-    //ENDADDED
 };
-struct server
-{
-    string server_name;
-    int server_id;
-    string server_ip_address;
-};
-struct char_array{
+
+struct char_array {
     char chararray[65536];
 };
 
@@ -110,14 +104,12 @@ SOCKET sockServer;
 SOCKET sockDataClient;
 unsigned char UseResponse[] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62 };
 
-//MOVED
-int socket_for_client, client_connection;
+int socket_for_client, client_connection;       //MOVED
 
 unsigned char perm_double_zero[2] = { 0x00, 0x00 };
 unsigned char perm_column_separator[2] = { 0x00, 0x0d };
 unsigned char perm_column_value_separation[4] = { 0x00, 0x00, 0x00, 0x01 };
 unsigned char perm_null_element[4] = { 0xff, 0xff, 0xff, 0xff };
-//MOVED
 
 //threads
 pthread_t th_FrameClient;
@@ -128,27 +120,45 @@ pthread_t th_Redirecting;
 pthread_t th_INITSocket_Redirection;
 pthread_t th_PrepExec[_THREDS_EXEC_NUMBER];
 std::mutex mtx_q_frames;
+//ADDED
+pthread_t th_Listening_socket;
+//ENDADDED
 
 PGconn* conn;
 PGresult* res;
 
-int server_count = 2;
+const int server_count = 2;
 server actual_server;
+//ADDED
+server subscriber_server;
+//ENDADDED
 server neighbor_server_1;
-server neighbor_server_2;
 server server_to_redirect;
 int port = 8042;
-std::list<Requests> l_bufferRequestsForActualServer;    //CHANGED
+std::list<Requests> l_bufferRequestsForActualServer;
 std::list<Requests> l_bufferPreparedReq;
-int socket_neighbor_1, socket_neighbor_2;
+int socket_neighbor_1;
+//ADDED
+vector<int> accepted_connections, connected_connections;
+//ENDADDED
 
 //Liste des serveurs
-server server_A = { "RWCS-vServer1", 0, "192.168.82.55" };
+/*server server_A = { "RWCS-vServer1", 0, "192.168.82.55" };
 server server_B = { "RWCS-vServer2", 1, "192.168.82.61" };
 server server_C = { "RWCS-vServer3", 2, "192.168.82.63" };
 server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
+server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };*/
+server server_A = { "RWCS-vServer1", 0, "192.168.82.63" };
+server server_B = { "RWCS-vServer2", 1, "192.168.82.61" };
+server server_C = { "RWCS-vServer3", 2, "192.168.82.64" };
+server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
+server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };
+//ADDED
+//Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
+vector<server> l_servers = { server_A, server_B, server_C/*, server_D, server_E, server_F*/ };
+//ENDADDED
 
 #pragma endregion Global
 
@@ -163,12 +173,12 @@ void ConnexionPGSQL();
 void closeSockets();
 void closeThreads();
 void exit_prog(int);
-void send_to_server(int, string);
+void send_to_server(int, char[2], string);
 void server_identification();
-void create_select_sql_query(string, string, vector<string>, char[2], string, int, int);    //CHANGED
-void create_update_sql_query(string, string, vector<string>, char[2], int); //CHANGED
-void create_insert_sql_query(string, string, vector<string>, vector<string>, char[2], int);    //CHANGED
-void create_delete_sql_query(string, string, char[2], int); //CHANGED
+void create_select_sql_query(string, string, vector<string>, char[2], string, int, int);
+void create_update_sql_query(string, string, vector<string>, char[2], int);
+void create_insert_sql_query(string, string, vector<string>, vector<string>, char[2], int);
+void create_delete_sql_query(string, string, char[2], int);
 int string_Hashing(string);
 int connect_to_server(server, int);
 bool exists_test();
@@ -184,19 +194,22 @@ vector<string> extract_insert_into_data_columns(string);
 vector<string> extract_values_data(string);
 vector<string> extract_select_data(string);
 vector<string> extract_set_data(string);
+//ADDED
+void* Listening_socket(void*);
+//ENDADDED
 #pragma endregion Prototypes
 
 int main(int argc, char* argv[])
-{   
+{
     if (argc == 4) {    //3 arguments
         if (std::string(argv[1]) == "oui")
             bl_UseReplication = true;
-        if(std::string(argv[2]) == "bench")
+        if (std::string(argv[2]) == "bench")
             bl_UseBench = true;
-        if(std::string(argv[3]) == "load")
+        if (std::string(argv[3]) == "load")
             bl_Load = true;
     }
-    else{
+    else {
         printf("Incorrect Parameters : ./CoucheLogicielle [oui|non] [bench|non] [load|run]\r\n");
         exit_prog(EXIT_FAILURE);
     }
@@ -219,12 +232,14 @@ int main(int argc, char* argv[])
     else
         logs("main() : Starting Proxy...Standalone mode selected");
     ConnexionPGSQL();   //Connexion PGSQL
-    for(int i=0; i<_THREDS_EXEC_NUMBER; i++){
-        CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, NULL);
-    }
 
     if (bl_UseReplication) {
         server_identification();
+        //ADDED
+        replication_relation actual_and_subscriber = { actual_server, subscriber_server };
+        for (int i = 0; i < _THREDS_EXEC_NUMBER; i++)
+            CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)&actual_and_subscriber);
+        //ENDADDED
         int b = 0;
         while (b != 1)
         {
@@ -233,12 +248,20 @@ int main(int argc, char* argv[])
             cout << endl;
         }
     }
+    //ADDED
+    else
+    {
+        for (int i = 0; i < _THREDS_EXEC_NUMBER; i++)
+            CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, NULL);
+    }
+    //ENDADDED
     //Starting threads for sockets
     CheckThreadCreation += pthread_create(&th_FrameData, NULL, TraitementFrameData, NULL);
     CheckThreadCreation += pthread_create(&th_Requests, NULL, TraitementRequests, NULL);
     CheckThreadCreation += pthread_create(&th_PostgreSQL, NULL, SendPGSQL, NULL);
     if (bl_UseReplication) {
         CheckThreadCreation += pthread_create(&th_Redirecting, NULL, redirecting, NULL);
+        CheckThreadCreation += pthread_create(&th_Listening_socket, NULL, Listening_socket, NULL);
     }
     //Check if threads have been created
     if (CheckThreadCreation != 0) {
@@ -267,7 +290,7 @@ int main(int argc, char* argv[])
         if (sockServer > 0) {
             // timestamp("Received frame", std::chrono::high_resolution_clock::now());
             memcpy(frameToSend.chararray, buffData, sizeof(buffData));
-            while (!mtx_q_frames.try_lock()){}
+            while (!mtx_q_frames.try_lock()) {}
             l_bufferFrames.push(frameToSend);
             mtx_q_frames.unlock();
             memset(buffData, 0, sizeof(buffData));
@@ -304,7 +327,7 @@ void* TraitementFrameData(void* arg) {
     bool bl_partialRequest = false;
     unsigned char partialRequest[2048];
     unsigned char partialHeader[13];
-    int sizeheader=0;
+    int sizeheader = 0;
     unsigned char test[65536];
     unsigned char frameData[65536];
     int autoIncrementRequest = 0;
@@ -314,58 +337,58 @@ void* TraitementFrameData(void* arg) {
         memset(&header[0], 0, sizeof(header));
         while (bl_loop) {
             if (!l_bufferFrames.empty()) {
-                if(mtx_q_frames.try_lock()){
+                if (mtx_q_frames.try_lock()) {
                     memcpy(frameData, l_bufferFrames.front().chararray, sizeof(frameData));
                     l_bufferFrames.pop();
                     mtx_q_frames.unlock();
                     sommeSize = 0;
                     bl_lastRequestFrame = false;
-                    if (bl_partialRequest){
-                        if(partialHeader[4] == _EXECUTE_STATEMENT)
+                    if (bl_partialRequest) {
+                        if (partialHeader[4] == _EXECUTE_STATEMENT)
                             sizeheader = 9;
                         else
                             sizeheader = 13;
                         memcpy(test, &partialHeader[0], sizeheader);
-                        memcpy(&test[sizeheader], &partialRequest[0], sizeof(partialRequest)-sizeheader);                      
-                        for(unsigned int i=sizeheader; i<sizeof(partialRequest); i++){
-                            if(test[i] == 0x00 && test[i+1] ==0x00 && test[i+2] == 0x00 &&test[i+3] == 0x00){
-                                if(frameData[0] == 0x00){
-                                    for(int j = 0; j<2;j++){
-                                        if(frameData[j+1] !=0){i++;}  //If frame is cut between multiple 0x00, need always 3 0x00 to separate exec champs
+                        memcpy(&test[sizeheader], &partialRequest[0], sizeof(partialRequest) - sizeheader);
+                        for (unsigned int i = sizeheader; i < sizeof(partialRequest); i++) {
+                            if (test[i] == 0x00 && test[i + 1] == 0x00 && test[i + 2] == 0x00 && test[i + 3] == 0x00) {
+                                if (frameData[0] == 0x00) {
+                                    for (int j = 0; j < 2; j++) {
+                                        if (frameData[j + 1] != 0) { i++; }  //If frame is cut between multiple 0x00, need always 3 0x00 to separate exec champs
                                     }
                                 }
-                                else if(frameData[0] == 0x64 && frameData[102] == 0x00) //All champs starts with 0000 000d to separate them
-                                    i+=3;
-                                memcpy(&test[i], frameData, sizeof(frameData)-i);
+                                else if (frameData[0] == 0x64 && frameData[102] == 0x00) //All champs starts with 0000 000d to separate them
+                                    i += 3;
+                                memcpy(&test[i], frameData, sizeof(frameData) - i);
                                 i = sizeof(partialRequest);
                                 bl_partialRequest = false;
                             }
                         }
                     }
-                    else{
+                    else {
                         memcpy(test, frameData, sizeof(frameData));
                     }
-                    while (!bl_lastRequestFrame && !bl_partialRequest){
+                    while (!bl_lastRequestFrame && !bl_partialRequest) {
                         autoIncrementRequest++;
                         memcpy(header, &test[sommeSize], 13);
                         memcpy(s_Requests.opcode, &header[4], 1);
                         memcpy(s_Requests.stream, &header[2], 2);
                         s_Requests.origin = 0;                              //TODO delete?
-                        if(s_Requests.opcode[0] != _EXECUTE_STATEMENT){
+                        if (s_Requests.opcode[0] != _EXECUTE_STATEMENT) {
                             s_Requests.size = (unsigned int)header[11] * 256 + (unsigned int)header[12];
                             memcpy(s_Requests.request, &test[13 + sommeSize], s_Requests.size);
                             sommeSize += s_Requests.size + 13;              //Request size + header size(13)
                         }
-                        else{
+                        else {
                             s_Requests.size = (unsigned int)header[7] * 256 + (unsigned int)header[8];
                             memcpy(s_Requests.request, &test[9 + sommeSize], s_Requests.size);
                             sommeSize += s_Requests.size + 9;
                         }
-                        if (test[sommeSize-1] == 0x00 && test[sommeSize-2] == 0x00 && test[sommeSize-3] ==0x00){          //Checking for partial request
+                        if (test[sommeSize - 1] == 0x00 && test[sommeSize - 2] == 0x00 && test[sommeSize - 3] == 0x00) {          //Checking for partial request
                             bl_partialRequest = true;
                             autoIncrementRequest--;
                         }
-                        if (!bl_partialRequest){
+                        if (!bl_partialRequest) {
                             switch (s_Requests.opcode[0])
                             {
                             case _QUERY_STATEMENT:
@@ -376,7 +399,7 @@ void* TraitementFrameData(void* arg) {
                                     bl_lastRequestFrame = true;
                                 else if (test[sommeSize - 2] == 0x04)
                                     sommeSize = sommeSize - 2;
-                                if (s_Requests.request[0] == 'U' && s_Requests.request[1] == 'S' && s_Requests.request[2] == 'E') 
+                                if (s_Requests.request[0] == 'U' && s_Requests.request[1] == 'S' && s_Requests.request[2] == 'E')
                                     l_bufferRequestsForActualServer.push_front(s_Requests);
                                 else if (bl_UseReplication)
                                     l_bufferRequests.push_front(s_Requests);
@@ -410,13 +433,13 @@ void* TraitementFrameData(void* arg) {
                             //     fichier << "Requete N° " << autoIncrementRequest << ", Taille : " << s_Requests.size << " : " << s_Requests.request << endl;
                             // }      
                         }
-                        else{
+                        else {
                             logs("Partial request", WARNING);
                             memset(partialRequest, 0, sizeof(partialRequest));
                             memset(partialHeader, 0, sizeof(partialHeader));
                             memcpy(&partialRequest[0], &s_Requests.request[0], sizeof(partialRequest));
                             memcpy(&partialHeader[0], &header[0], sizeof(partialHeader));
-                            if(partialRequest[0] == 0x00 && partialRequest[1] == 0x00 && partialRequest[2] == 0x00 && partialRequest[3] == 0x00)
+                            if (partialRequest[0] == 0x00 && partialRequest[1] == 0x00 && partialRequest[2] == 0x00 && partialRequest[3] == 0x00)
                                 bl_partialRequest = false;
                         }//Fin de requête
                         memset(&s_Requests.request[0], 0x00, sizeof(s_Requests.request));
@@ -425,7 +448,7 @@ void* TraitementFrameData(void* arg) {
                     memset(&header[0], 0, sizeof(header));
                     // timestamp("Frame OK", std::chrono::high_resolution_clock::now());
                 }
-                else{
+                else {
                     std::this_thread::sleep_for(std::chrono::milliseconds(10)); //TODO maybe need to edit
                 }
             }
@@ -526,7 +549,7 @@ void* SendPGSQL(void* arg)
                 printf("\n\n");
 
                 unsigned char full_text[15000];
-                unsigned char response[38] = { 
+                unsigned char response[38] = {
                     0x84, 0x00, stream[0], stream[1], 0x08, 0x00, 0x00, 'x', 'x', 0x00, 0x00, 0x00, 0x02, 0x00,
                     0x00, 0x00, 0x01, 0x00, 0x00, (nFields + 1) / 256, nFields + 1, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62, 0x00, 0x09, 0x75,
                     0x73, 0x65, 0x72, 0x74, 0x61, 0x62, 0x6c, 0x65 };
@@ -636,8 +659,9 @@ void* SendPGSQL(void* arg)
                 //ADDED
                 if (origin == 0)
                     write(sockDataClient, full_text, pos);
-                else if (origin == 1)
-                    write(client_connection, full_text, pos);
+                else
+                    write(origin, full_text, pos);
+                cout << "Reponse renvoyee a l'expediteur" << endl;
                 //ENDADDED
 
                 printf("\n");
@@ -649,8 +673,9 @@ void* SendPGSQL(void* arg)
                 unsigned char response_cmd_ok[13] = { 0x84, 0x00 , stream[0], stream[1], 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };
                 if (origin == 0)
                     write(sockDataClient, response_cmd_ok, 13);
-                else if (origin == 1)
-                    write(client_connection, response_cmd_ok, 13);
+                else
+                    write(origin, response_cmd_ok, 13);
+                cout << "Reponse renvoyee a l'expediteur" << endl;
             }
 
             else
@@ -720,7 +745,7 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
             }
             cout << endl;
             //Appel de la fonction de conversion pour du RWCS
-            create_select_sql_query(table, key, fields, Request_incoming_cql_query.stream, key_name, pos_key, Request_incoming_cql_query.origin);     //CHANGED
+            create_select_sql_query(table, key, fields, Request_incoming_cql_query.stream, key_name, pos_key, Request_incoming_cql_query.origin);
         }
         catch (std::string const& chaine)
         {
@@ -759,7 +784,7 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
             cout << endl;
 
             //Call conversion function
-            create_update_sql_query(table, key, values, Request_incoming_cql_query.stream, Request_incoming_cql_query.origin);    //CHANGED
+            create_update_sql_query(table, key, values, Request_incoming_cql_query.stream, Request_incoming_cql_query.origin);
             // l_bufferPGSQLRequests.push_front(Request_incoming_cql_query);
         }
         catch (std::string const& chaine)
@@ -796,7 +821,7 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
                 cout << columns[i] << " => " << values[i] << " __ ";
             }
             cout << endl;
-            create_insert_sql_query(table, key, columns, values, Request_incoming_cql_query.stream, Request_incoming_cql_query.origin);   //CHANGED             //Appel de la fonction de conversion pour du RWCS
+            create_insert_sql_query(table, key, columns, values, Request_incoming_cql_query.stream, Request_incoming_cql_query.origin);             //Appel de la fonction de conversion pour du RWCS
         }
         catch (std::string const& chaine)
         {
@@ -825,7 +850,7 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
             //Affichage des paramètres
             cout << "Table: " << table << " - Key: " << key << endl;
             //Appel de la fonction de conversion pour du RWCS
-            create_delete_sql_query(table, key, Request_incoming_cql_query.stream, Request_incoming_cql_query.origin);  //CHANGED
+            create_delete_sql_query(table, key, Request_incoming_cql_query.stream, Request_incoming_cql_query.origin);
         }
         catch (std::string const& chaine)
         {
@@ -840,12 +865,12 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
     }
     else if (LowerRequest.substr(0, 3) == "use") {
         memcpy(&UseResponse[2], &Request_incoming_cql_query.stream, 2);
-        //ADDED
+
         if (Request_incoming_cql_query.origin == 0)
             write(sockDataClient, UseResponse, sizeof(UseResponse));
-        else if (Request_incoming_cql_query.origin == 1)
-            write(client_connection, UseResponse, sizeof(UseResponse));
-        //ENDADDED
+        else
+            write(Request_incoming_cql_query.origin, UseResponse, sizeof(UseResponse));
+        cout << "Reponse renvoyee a l'expediteur" << endl;
     }
     else {
         logs("CQLtoSQL() : Type de requete non reconnu. Requete : " + _incoming_cql_query, ERROR);      //TODO peut-être LOG ça dans un fichier de logs de requetes?
@@ -853,16 +878,14 @@ void CQLtoSQL(SQLRequests Request_incoming_cql_query)
     // timestamp("CQLtoSQLDone", std::chrono::high_resolution_clock::now());
 }
 
-void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2], string _key_name, int pos_key, int origin) //CHANGED
+void create_select_sql_query(string _table, string _key, vector<string> _fields, char id[2], string _key_name, int pos_key, int origin)
 {
     SQLRequests TempSQLReq;
     memcpy(TempSQLReq.stream, id, 2);
     strcpy(TempSQLReq.key, _key.c_str());
     strcpy(TempSQLReq.key_name, _key_name.c_str());
     TempSQLReq.pos_key = pos_key;
-    //ADDED
     TempSQLReq.origin = origin;
-    //ENDADDED
     TempSQLReq.request = "SELECT * FROM " + _key;
     //On regarde si, dans la requête CQL, on voulait prendre * ou des champs particuliers
     if (_fields[0] != "*")
@@ -882,15 +905,13 @@ void create_select_sql_query(string _table, string _key, vector<string> _fields,
     return;
 }
 
-void create_update_sql_query(string _table, string _key, vector<string> _values, char id[2], int origin)    //CHANGED
+void create_update_sql_query(string _table, string _key, vector<string> _values, char id[2], int origin)
 {
     //Comme on update uniquement la colonne value d'une table, il faut utiliser la clause CASE sur la valeur de la colonne column_name
     //Dans _values, les éléments "impairs" (le premier, troisième,...) sont les colonnes à update et les "pairs" sont les valeurs de ces colonnes
     SQLRequests TempSQLReq;
     memcpy(TempSQLReq.stream, id, 2);
-    //ADDED
     TempSQLReq.origin = origin;
-    //ENDADDED
     TempSQLReq.request = "UPDATE " + _key + " SET value = ";
     //On regarde si on a plusieurs champs à update
     if (_values.size() > 2)
@@ -917,13 +938,11 @@ void create_update_sql_query(string _table, string _key, vector<string> _values,
     return;
 }
 
-void create_insert_sql_query(string _table, string _key, vector<string> _columns, vector<string> _values, char id[2], int origin)  //CHANGED
+void create_insert_sql_query(string _table, string _key, vector<string> _columns, vector<string> _values, char id[2], int origin)
 {
     SQLRequests TempSQLReq;
     memcpy(TempSQLReq.stream, id, 2);
-    //ADDED
     TempSQLReq.origin = origin;
-    //ENDADDED
     TempSQLReq.request = "CREATE TABLE " + _key + " (column_name varchar(255), value varchar(255)); ";
     // cout<<TempSQLReq.request<<endl;
     l_bufferPGSQLRequests.push_front(TempSQLReq);
@@ -937,13 +956,11 @@ void create_insert_sql_query(string _table, string _key, vector<string> _columns
     //return returned_insert_sql_query;
 }
 
-void create_delete_sql_query(string _table, string _key, char id[2], int origin)    //CHANGED
+void create_delete_sql_query(string _table, string _key, char id[2], int origin)
 {
     SQLRequests TempSQLReq;
     memcpy(TempSQLReq.stream, id, 2);
-    //ADDED
     TempSQLReq.origin = origin;
-    //ENDADDED
     TempSQLReq.request = "DROP TABLE " + _key + " ;";
     l_bufferPGSQLRequests.push_front(TempSQLReq);
     return;
@@ -1234,24 +1251,24 @@ void exit_prog(int codeEXIT) {
 }
 
 inline bool exists_test() {
-  return (stat (fileExistRun.c_str(), &buffe) == 0); 
+    return (stat(fileExistRun.c_str(), &buffe) == 0);
 }
 
-void closeSockets(){
+void closeSockets() {
     int closeSocketResult = 0;
     closeSocketResult += close(sockDataClient);
     closeSocketResult += close(GetSocketConn());
     closeSocketResult += close(client_connection);
     printf("Sock close : %d\r\n", closeSocketResult);
-    if(closeSocketResult == 0)
+    if (closeSocketResult == 0)
         logs("Sockets closed");
-    else{
+    else {
         logs("Socket closing", ERROR);
     }
     return;
 }
 
-void closeThreads(){
+void closeThreads() {
     // closethreads+= pthread_cancel(th_PrepExec1);
     // closethreads+=pthread_cancel(th_PrepExec2);
     // closethreads+=pthread_cancel(th_PrepExec3);
@@ -1260,7 +1277,7 @@ void closeThreads(){
     // closethreads+=pthread_cancel(th_PrepExec6);
     // closethreads+=pthread_cancel(th_PrepExec7);
     // closethreads+=pthread_cancel(th_PrepExec8);
-    for(int i=0; i<_THREDS_EXEC_NUMBER; i++){
+    for (int i = 0; i < _THREDS_EXEC_NUMBER; i++) {
         pthread_join(th_PrepExec[i], NULL);
     }
     // pthread_join(th_PrepExec1, NULL);
@@ -1273,15 +1290,15 @@ void closeThreads(){
     // pthread_join(th_PrepExec8, NULL);
     printf("1\r\n");
     pthread_join(th_Requests, NULL);
-            printf("1\r\n");
+    printf("1\r\n");
     pthread_join(th_PostgreSQL, NULL);
-        printf("1\r\n");
+    printf("1\r\n");
     pthread_join(th_FrameClient, NULL);
     printf("1\r\n");
     pthread_join(th_FrameData, NULL);
     printf("1\r\n");
     pthread_join(th_Redirecting, NULL);
-     printf("1\r\n");
+    printf("1\r\n");
     pthread_join(th_INITSocket_Redirection, NULL);
 }
 #pragma endregion Utils
@@ -1290,8 +1307,7 @@ void closeThreads(){
 void* INITSocket_Redirection(void* arg)
 {
     struct sockaddr_in address;
-    Requests req;
-    char buffer[1024];
+    char buffer[10240];
 
     socket_for_client = socket(AF_INET, SOCK_STREAM, 0);
     memset(&address, '0', sizeof(address));
@@ -1304,73 +1320,103 @@ void* INITSocket_Redirection(void* arg)
 
     listen(socket_for_client, 10);
 
-    client_connection = accept(socket_for_client, (struct sockaddr*)NULL, NULL);
-
-    recv(client_connection, buffer, sizeof(buffer), 0);
-    memcpy(req.request, buffer, 1024);
     //ADDED
-    req.origin = 1;
+    while (accepted_connections.size() < server_count - 1)
+    {
+        client_connection = accept(socket_for_client, (struct sockaddr*)NULL, NULL);
+        fcntl(client_connection, F_SETFL, O_NONBLOCK);
+        accepted_connections.push_back(client_connection);
+        client_connection = 0;
+        cout << "Connexion " << accepted_connections.size() << " acceptee pour la redirection" << endl;
+    }
+
+    cout << "Connexion a tous les serveurs acceptees!" << endl;
+
+    while (1)
+    {
+        for (int i = 0; i < accepted_connections.size(); i++)
+        {
+            if (recv(accepted_connections[i], buffer, sizeof(buffer), 0) > 0)
+            {
+                Requests s_Requests;
+                unsigned long int sommeSize = 0;
+                unsigned char test[10240];
+                unsigned char header[13];
+                int autoIncrementRequest = 0;
+                bool bl_lastRequestFrame = false;
+
+                memset(&test[0], 0, 10240);
+                memset(&header[0], 0, 13);
+                memcpy(test, buffer, 10240);
+                bl_lastRequestFrame = false;
+                sommeSize = 0;
+                while (bl_lastRequestFrame == false) {
+                    autoIncrementRequest++;
+                    memcpy(header, &test[sommeSize], 13);
+                    for (int i = 0; i < 13; i++) { printf("0x%x ", header[i]); }
+                    s_Requests.size = (unsigned int)header[11] * 256 + (unsigned int)header[12];;
+                    memcpy(s_Requests.request, &test[13 + sommeSize], s_Requests.size);
+                    memcpy(s_Requests.opcode, &test[4 + sommeSize], 1);
+                    memcpy(s_Requests.stream, &test[2 + sommeSize], 2);
+                    s_Requests.origin = accepted_connections[i];
+
+                    sommeSize += s_Requests.size + 13;    //Request size + header size(13) + 3 hex values at the end of the request
+                    cout << "SommeSize : " << sommeSize << endl;
+
+                    if (fichier) {
+                        fichier << "Requete N° " << autoIncrementRequest << ", Taille : " << s_Requests.size << " : " << s_Requests.request << endl;
+                    }
+
+                    if (test[sommeSize] == 0x00 && test[sommeSize + 1] == 0x01 && test[sommeSize + 2] == 0x00) {
+                        sommeSize = sommeSize + 3;
+                    }
+                    if (test[sommeSize] == 0x00) {
+                        cout << "Fin" << endl;
+                        bl_lastRequestFrame = true;
+                    }
+                    else if (test[sommeSize - 2] == 0x04)
+                        sommeSize = sommeSize - 2;
+
+                    if (s_Requests.request[0] == 'U' && s_Requests.request[1] == 'S' && s_Requests.request[2] == 'E') {
+                        l_bufferRequestsForActualServer.push_front(s_Requests);
+                    }
+                    else {
+                        if (bl_UseReplication)
+                            l_bufferRequests.push_front(s_Requests);
+                        else
+                            l_bufferRequestsForActualServer.push_front(s_Requests);
+                    }
+                    memset(s_Requests.request, 0, s_Requests.size);
+                }
+            }
+        }
+    }
     //ENDADDED
-    l_bufferRequestsForActualServer.push_front(req);
-    cout << endl << buffer << endl;
 
     return NULL;
 }
 #pragma endregion Listening
 
 #pragma region Preparation
+//CHANGED
 void server_identification()
 {
-    if (get_ip_from_actual_server() == server_A.server_ip_address)
+    for (int i = 0; i < l_servers.size(); i++)
     {
-        actual_server = server_A;
-        neighbor_server_1 = server_B;
-        //neighbor_server_2 = server_F;
+        if (get_ip_from_actual_server() == l_servers[i].server_ip_address)
+        {
+            actual_server = l_servers[i];
+            cout << get_ip_from_actual_server() << endl;
+            cout << "Serveur #" << actual_server.server_id << ", Nom : " << actual_server.server_name << ", Adresse IP: " << actual_server.server_ip_address << endl;
+        }
+        else
+        {
+            connected_connections.push_back(connect_to_server(l_servers[i], port));
+            cout << "Tentative de connexion avec " << l_servers[i].server_name << " (" << l_servers[i].server_ip_address << ") " << endl;
+        }
     }
-
-    else if (get_ip_from_actual_server() == server_B.server_ip_address)
-    {
-        actual_server = server_B;
-        neighbor_server_1 = server_A;
-        //neighbor_server_1 = server_C;
-        //neighbor_server_2 = server_A;
-    }
-
-    else if (get_ip_from_actual_server() == server_C.server_ip_address)
-    {
-        actual_server = server_C;
-        neighbor_server_1 = server_D;
-        neighbor_server_2 = server_B;
-    }
-
-    else if (get_ip_from_actual_server() == server_D.server_ip_address)
-    {
-        actual_server = server_D;
-        neighbor_server_1 = server_E;
-        neighbor_server_2 = server_C;
-    }
-
-    else if (get_ip_from_actual_server() == server_E.server_ip_address)
-    {
-        actual_server = server_E;
-        neighbor_server_1 = server_F;
-        neighbor_server_2 = server_D;
-    }
-
-    else if (get_ip_from_actual_server() == server_F.server_ip_address)
-    {
-        actual_server = server_F;
-        neighbor_server_1 = server_A;
-        neighbor_server_2 = server_E;
-    }
-
-    cout << get_ip_from_actual_server() << endl;
-    cout << "Serveur #" << actual_server.server_id << ", Nom : " << actual_server.server_name << ", Adresse IP: " << actual_server.server_ip_address << endl;
-
-    //On crée les connexions permanentes avec les serveurs voisins
-    socket_neighbor_1 = connect_to_server(neighbor_server_1, port);               //...
-    //socket_neighbor_2 = connect_to_server(neighbor_server_2, port);
 }
+//ENDCHANGED
 
 string get_ip_from_actual_server() {
     struct ifaddrs* ifAddrStruct = NULL;
@@ -1416,48 +1462,57 @@ int connect_to_server(server _server_to_connect, int _port_to_connect)
 
     inet_pton(AF_INET, ip_address, &serv_addr.sin_addr);    //MIHALY remove this line?
     connect(sock_to_server, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+    //ADDED
+    fcntl(sock_to_server, F_SETFL, O_NONBLOCK);
+    //ENDADDED
     logs("connect_to_server() : Connexion établie avec " + _server_to_connect.server_ip_address);
     // cout << endl << "Connexion etablie avec " << ip_address << endl;
 
     return sock_to_server;
 }
 
-void send_to_server(int _socketServer, string _query_to_send)
+//CHANGED
+void send_to_server(int _socketServer, char _stream_to_send[2], string _query_to_send)
 {
-    const char* cql_query = _query_to_send.c_str();
+    unsigned char cql_query[13 + _query_to_send.length()];
+    unsigned char header_to_send[13] = { 0x04, 0x00, _stream_to_send[0], _stream_to_send[1], 0x07, 0x00, 0x00, (_query_to_send.length() + 21) / 256, _query_to_send.length() + 21, 0x00, 0x00, _query_to_send.length() / 256, _query_to_send.length() };
 
-    send(_socketServer, cql_query, strlen(cql_query), 0);
+    memcpy(cql_query, header_to_send, 13);
+    memcpy(cql_query + 13, _query_to_send.c_str(), _query_to_send.length());
+
+    write(_socketServer, cql_query, 13 + _query_to_send.length());
     cout << endl << "Incoming query sent" << endl;
 }
+//ENDCHANGED
 #pragma endregion Server_connection
 
 #pragma region Redirecting
 void* redirecting(void* arg)
 {
     Requests req;
-    string tempReq;
-    // char stream[2];
-    while (bl_loop)
+    string tempReq; //CHANGED
+    while (1)
     {
-        //On hash la clé extraite de la requête via la fonction string_Hashing()
         if (l_bufferRequests.size() > 0)
         {
-            tempReq = (char*) l_bufferRequests.back().request;
-            strcpy(req.stream, l_bufferRequests.back().stream);
-            strcpy(req.opcode, l_bufferRequests.back().opcode);
-            // req.RequestNumber=stream;
-            // req.RequestOpcode='0x07';
+            tempReq = (char*)l_bufferRequests.back().request;      //CHANGED
+            req.origin = l_bufferRequests.back().origin;
+            memcpy(req.stream, l_bufferRequests.back().stream, 2);
+            memcpy(req.opcode, l_bufferRequests.back().opcode, 1);
             l_bufferRequests.pop_back();
             cout << "redirecting() pop back ok" << endl;
+
             string key_from_cql_query = key_extractor(tempReq);
 
+            //On hash la clé extraite de la requête via la fonction string_Hashing()
             int hashed_key = string_Hashing(key_from_cql_query);
             cout << hashed_key << endl;
 
-            //On détermine le serveur vers lequel rediriger
+            //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
             int range_id = hashed_key % server_count;
             cout << range_id << endl;
 
+            //On détermine le serveur vers lequel rediriger
             if (range_id == server_A.server_id)
             {
                 server_to_redirect = server_A;
@@ -1483,36 +1538,28 @@ void* redirecting(void* arg)
                 server_to_redirect = server_F;
             }
 
-            //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
+            //CHANGED
             if (server_to_redirect.server_id != actual_server.server_id)
             {
-                //On regarde si on doit rediriger vers un voisin
-                if (server_to_redirect.server_id == neighbor_server_1.server_id)              //...
-                {
-                    cout << "Requete a rediriger vers le voisin " << server_to_redirect.server_name << endl;
-                    send_to_server(socket_neighbor_1, tempReq);
-                }
-                //Si non on crée la connection et on envoie
+                //Redirection
+                cout << "Requete a rediriger vers " << server_to_redirect.server_name << endl;
+                if (server_to_redirect.server_id > actual_server.server_id)
+                    send_to_server(connected_connections[server_to_redirect.server_id - 1], req.stream, tempReq);
                 else
-                {
-                    cout << "Requete a rediriger vers " << server_to_redirect.server_name << endl;
-                    send_to_server(connect_to_server(server_to_redirect, port), tempReq);
-                }
+                    send_to_server(connected_connections[server_to_redirect.server_id], req.stream, tempReq);
             }
             else
             {
-                
                 //Envoi vers PostgreSQL
-                // req.Request=tempReq.c_str();
+                cout << "Requete a envoyer vers PostgreSQL" << endl;
                 memcpy(req.request, tempReq.c_str(), tempReq.length());
                 l_bufferRequestsForActualServer.push_front(req);
-                cout << "Requete a envoyer vers PostgreSQL" << endl;
             }
+            //ENDCHANGED
             key_from_cql_query = "";
         }
     }
-    logs("Redirecting() : Fin du thread");
-    pthread_exit(NULL);
+
     return NULL;
 }
 
@@ -1600,4 +1647,28 @@ string key_extractor(string _incoming_cql_query)
         exit(EXIT_FAILURE);
     }
 }
+//ADDED
+void* Listening_socket(void* arg)
+{
+    char buffer[1024];
+    int length;
+    while (1)
+    {
+        for (int i = 0; i < connected_connections.size(); i++)
+        {
+            if (recv(connected_connections[i], buffer, sizeof(buffer), 0) > 0)
+            {
+                length = (buffer[7] * 256) + buffer[8] + 9;
+                unsigned char u_buffer[length];
+                memcpy(u_buffer, buffer, length);
+                write(sockDataClient, u_buffer, sizeof(u_buffer));
+                cout << "Recu d'un autre serveur et envoye a sockDataClient" << endl;
+
+                memset(buffer, 0, 1024);
+                length = 0;
+            }
+        }
+    }
+}
+//ENDADDED
 #pragma endregion Redirecting
