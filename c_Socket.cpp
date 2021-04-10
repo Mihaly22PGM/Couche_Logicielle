@@ -2,9 +2,11 @@
 
 #pragma region Global
 SOCKET sockClient = 0;
+SOCKET socketDataClient = 0;
 int portClients = 9042;
 struct sockaddr_in serv_addr;
-char buffClient[1024];	//TODO rename and set a lower value? To check
+char buffClient[1024];
+bool bl_ContinueThreadSocket = true;
 int fr_lengthPGSQL[] = {9, 9, 162, 691,	714, 7240, 7240, 14480, 14118, 668, 9, 691};
 int fr_lengthBench[] = {9, 9, 162, 739, 779, 117, 7240, 7240, 4167, 176, 714, 14480, 9435, 162, 739, 9, 64};
 unsigned char fr_connectionPSQL[][15000] = {
@@ -5844,12 +5846,11 @@ SOCKET CreateSocket(){
 	return sockServer;
 }
 
-SOCKET INITSocket(SOCKET sockServer, std::string mode){
-	SOCKET sockDataClient;
+SOCKET INITSocket(SOCKET sockServer/*, std::string mode="nope"*/){
 	listen(sockServer, 10);
     sockClient = accept(sockServer, (struct sockaddr*)NULL,NULL);
     int i = 0;
-
+	std::string mode = "bench";
 	if(mode == "bench"){
 		while(i<15){
 			int server = recv(sockClient, buffClient, sizeof(buffClient),0);
@@ -5873,13 +5874,13 @@ SOCKET INITSocket(SOCKET sockServer, std::string mode){
 			else if(i==14){
 				write(sockClient, fr_connectionBench[i], fr_lengthBench[i]);
 				i++;
-				sockDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
+				socketDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
 			}
 		}
 		while(i<17){
-			int server2 = recv(sockDataClient, buffClient, sizeof(buffClient),0);
+			int server2 = recv(socketDataClient, buffClient, sizeof(buffClient),0);
 			if(server2>0){
-				write(sockDataClient, fr_connectionBench[i],fr_lengthBench[i]);
+				write(socketDataClient, fr_connectionBench[i],fr_lengthBench[i]);
 				i++;
 			}
 		}
@@ -5896,28 +5897,29 @@ SOCKET INITSocket(SOCKET sockServer, std::string mode){
 					write(sockClient, fr_connectionPSQL[i], fr_lengthPGSQL[i]);
 					i++;
 				}
-				sockDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
+				socketDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
 			}
 		}
 		while(i<12){
-			int server2 = recv(sockDataClient, buffClient, sizeof(buffClient),0);
+			int server2 = recv(socketDataClient, buffClient, sizeof(buffClient),0);
 			if(server2>0){
-				write(sockDataClient, fr_connectionPSQL[i],fr_lengthPGSQL[i]);
+				write(socketDataClient, fr_connectionPSQL[i],fr_lengthPGSQL[i]);
 				i++;
 			}
 		}
 	}
-    
-	return sockDataClient;
+	// fcntl(sockClient, F_SETFL, O_NONBLOCK); 
+    //fcntl(socketDataClient, F_SETFL, O_NONBLOCK); 
+	return socketDataClient;
 }
 
-in_addr GetIPAdress(){
+in_addr GetIPAdress(){		//TODO repair or delete
 	return serv_addr.sin_addr;
 }
 
 void* TraitementFrameClient(void*){
     int server;
-    while(1){
+    while(bl_ContinueThreadSocket){
 		server = 0;
 		server = recv(sockClient, buffClient, sizeof(buffClient),0);
 		if(server > 0){
@@ -5926,7 +5928,19 @@ void* TraitementFrameClient(void*){
 			write(sockClient, fr_connectionPSQL[13], fr_lengthPGSQL[13]);
 		}
     }
+	pthread_exit(NULL);
+}
+void StopSocketThread(){
+	bl_ContinueThreadSocket = false;
+	return;
 }
 
+SOCKET GetSocket(){
+	return socketDataClient;
+}
+
+SOCKET GetSocketConn(){
+	return sockClient;
+}
 #pragma endregion Fonctions
 

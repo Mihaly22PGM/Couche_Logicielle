@@ -2,7 +2,7 @@
 EXEC = CoucheLogicielle
 
 #Source files
-SRC_FILES = main.cpp c_Socket.cpp c_Logs.cpp
+SRC_FILES = main.cpp c_Socket.cpp c_Logs.cpp c_PreparedStatements.cpp
 
 COURSE_DIR = /usr/include/postgresql
 
@@ -44,8 +44,10 @@ clean:
 	rm -rf HEXConverter
 	rm -rf Logs
 	rm -rf LogsPerfs
+	rm -rf LogsPGSQL
 
 logClean:
 	rm -rf Request.log
 	rm -rf Logs
 	rm -rf LogsPerfs
+	rm -rf LogsPGSQL
