@@ -5846,12 +5846,11 @@ SOCKET CreateSocket(){
 	return sockServer;
 }
 
-SOCKET INITSocket(SOCKET sockServer/*, std::string mode="nope"*/){
+SOCKET INITSocket(SOCKET sockServer, bool modeBench=false){
 	listen(sockServer, 10);
     sockClient = accept(sockServer, (struct sockaddr*)NULL,NULL);
     int i = 0;
-	std::string mode = "bench";
-	if(mode == "bench"){
+	if(modeBench){
 		while(i<15){
 			int server = recv(sockClient, buffClient, sizeof(buffClient),0);
 			if(server>0){
@@ -5926,6 +5925,9 @@ void* TraitementFrameClient(void*){
 			fr_connectionPSQL[13][2] = buffClient[2];
 			fr_connectionPSQL[13][3] = buffClient[3];
 			write(sockClient, fr_connectionPSQL[13], fr_lengthPGSQL[13]);
+		}
+		else{
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
     }
 	pthread_exit(NULL);

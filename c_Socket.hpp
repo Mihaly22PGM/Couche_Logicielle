@@ -7,6 +7,9 @@
 #include <string.h>
 #include <iostream>
 #include <errno.h>
+#include <pthread.h>
+#include <future>
+#include <chrono>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -16,10 +19,10 @@
 typedef int SOCKET;
 
 SOCKET CreateSocket();                  //Socket creation
-SOCKET INITSocket(SOCKET/*, std::string*/); //Socket initialisation 
+SOCKET INITSocket(SOCKET, bool);        //Socket initialisation 
 void *TraitementFrameClient(void*);     //Response to isalive requests
 in_addr GetIPAdress();                  //Get the IP Adress of the server
 SOCKET GetSocket();                     //Return data socket
-SOCKET GetSocketConn();
-void StopSocketThread();
+SOCKET GetSocketConn();                 //Return conn socket
+void StopSocketThread();                //Stopping threads
 #endif

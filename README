@@ -1,3 +1,9 @@
+######################################################################
+
+This version is for the load phase.
+
+######################################################################
+
 Follow these steps to use the Relational Wide Colomn Store paradigm
 
 0 - Move to root user (or use sudo with following commands)
