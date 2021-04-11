@@ -54,7 +54,7 @@ struct Requests {
     char opcode[1];
     char stream[2];
     int size;
-    unsigned char request[2048];
+    char request[2048];    //TEST
     int origin; //0 = issu du serveur, 1 = issu de la redirection
 };
 struct SQLRequests {
@@ -72,7 +72,7 @@ struct server
     string server_ip_address;
 };
 struct char_array{
-    char chararray[65536];
+   unsigned char chararray[65536];
 };
 
 #pragma endregion Structures
@@ -85,7 +85,8 @@ bool bl_Error_Args = false;
 bool bl_lastRequestFrame = false;
 bool bl_loop = true;
 const char* conninfo = "user = postgres";
-char buffData[65536];
+unsigned char buffData[65536];   //TODO change
+// void *buffData;
 unsigned char header[13];
 
 Requests s_Requests;
@@ -121,17 +122,19 @@ pthread_t th_Redirecting;
 pthread_t th_INITSocket_Redirection;
 pthread_t th_PrepExec[_THREDS_EXEC_NUMBER];
 std::mutex mtx_q_frames;
+std::mutex mtx_q_ReqActuServer;
 
 PGconn* conn;
 PGresult* res;
 
+int autoclose = 0;  //TO close prog after 30 secs
 int server_count = 2;
 server actual_server;
 server neighbor_server_1;
 server neighbor_server_2;
 server server_to_redirect;
 int port = 8042;
-std::list<Requests> l_bufferRequestsForActualServer;    //CHANGED
+std::queue<Requests> l_bufferRequestsForActualServer;    //CHANGED
 std::list<Requests> l_bufferPreparedReq;
 int socket_neighbor_1, socket_neighbor_2;
 
@@ -147,7 +150,7 @@ server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };
 
 #pragma region Prototypes
 void* TraitementFrameData(void*);
-void* TraitementRequests(void*);
+//void* TraitementRequests(void*);
 void* INITSocket_Redirection(void*);
 void* redirecting(void*);
 void closeSockets();
@@ -225,7 +228,7 @@ int main(int argc, char* argv[])
     }
     //Starting threads for sockets
     CheckThreadCreation += pthread_create(&th_FrameData, NULL, TraitementFrameData, NULL);
-    CheckThreadCreation += pthread_create(&th_Requests, NULL, TraitementRequests, NULL);    //TODO thread usefull just for use requests?
+    //CheckThreadCreation += pthread_create(&th_Requests, NULL, TraitementRequests, NULL);    //TODO thread usefull just for use requests?
     //CheckThreadCreation += pthread_create(&th_PostgreSQL, NULL, SendPGSQL, NULL);
     if (bl_UseReplication) {
         CheckThreadCreation += pthread_create(&th_Redirecting, NULL, redirecting, NULL);
@@ -251,26 +254,41 @@ int main(int argc, char* argv[])
     initClock(std::chrono::high_resolution_clock::now());
     timestamp("Starting Done", std::chrono::high_resolution_clock::now());
     char_array frameToSend;
-    while (exists_test()) {
+    while (bl_loop) {
         sockServer = 0;
-        sockServer = recv(sockDataClient, buffData, sizeof(buffData), 0);
+        sockServer = recv(sockDataClient, buffData, 65536, 0);
         if (sockServer > 0) {
+            printf("OK : %d\r\n", sockServer);
+            if(sockServer > 65000){
+                logs("Attention Billy ça va peter", WARNING);
+                printf("%d\r\n", sockServer);
+                for(int i = 65400; i<65500; i++){
+                    printf("0x%x \r\n", buffData[i]);
+                }
+            }
             // timestamp("Received frame", std::chrono::high_resolution_clock::now());
-            memcpy(frameToSend.chararray, buffData, sizeof(buffData));
+            memcpy(frameToSend.chararray, buffData, 65536);
             while (!mtx_q_frames.try_lock()){}
             q_bufferFrames.push(frameToSend);
+            printf("pushed\r\n");
             mtx_q_frames.unlock();
-            memset(buffData, 0, sizeof(buffData));
+            memset(buffData, 0, 65536);
+            printf("reset\r\n");
             // timestamp("Frame pushed", std::chrono::high_resolution_clock::now());
+            autoclose=0;
         }
         else{
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));  //DELETE?
+            printf("SockServer : %d", sockServer);
+            autoclose++;
+            if(autoclose>30000){    //Après 30 secondes, fermeture automatique du prog
+                bl_loop =false;
+            }
+            //std::this_thread::sleep_for(std::chrono::milliseconds(1));  //DELETE?
         }
     }
     printf("Fermeture du programme...\r\n");
     Ending();
     StopSocketThread();
-    bl_loop = false;
     closeThreads();
     logs("Fermeture des ports...");
     closeSockets();   //TODO
@@ -291,6 +309,7 @@ void* TraitementFrameData(void* arg) {
     unsigned char test[65536];
     unsigned char frameData[65536];
     int autoIncrementRequest = 0;
+    std::string usereq="";
     PrepAndExecReq s_PrepAndExec_ToSend;
     try {
         memset(&test[0], 0, sizeof(test));
@@ -302,6 +321,7 @@ void* TraitementFrameData(void* arg) {
                         memcpy(frameData, q_bufferFrames.front().chararray, sizeof(frameData));
                         q_bufferFrames.pop();
                         mtx_q_frames.unlock();
+                        printf("Size queue : %zu\r\n", q_bufferFrames.size());
                         sommeSize = 0;
                         bl_lastRequestFrame = false;
                         if (bl_partialRequest){
@@ -353,6 +373,7 @@ void* TraitementFrameData(void* arg) {
                                 switch (s_Requests.opcode[0])
                                 {
                                 case _QUERY_STATEMENT:
+                                    printf("WTF\r\n");
                                     if (test[sommeSize] == 0x00 && test[sommeSize + 1] == 0x01 && test[sommeSize + 2] == 0x00) {    //Checking for USE statements
                                         sommeSize = sommeSize + 3;
                                     }
@@ -360,14 +381,31 @@ void* TraitementFrameData(void* arg) {
                                         bl_lastRequestFrame = true;
                                     else if (test[sommeSize - 2] == 0x04)   //TODO useless?
                                         sommeSize = sommeSize - 2;
-                                    if (s_Requests.request[0] == 'U' && s_Requests.request[1] == 'S' && s_Requests.request[2] == 'E') 
-                                        l_bufferRequestsForActualServer.push_front(s_Requests);
+                                    if (s_Requests.request[0] == 'U' && s_Requests.request[1] == 'S' && s_Requests.request[2] == 'E'){
+                                        //while (!mtx_q_ReqActuServer.try_lock()){}
+                                        printf("This is a USE\r\n");
+                                        usereq = std::string(s_Requests.request);
+                                        if(usereq.substr(0,3) == "USE"){
+                                            memcpy(&UseResponse[2], &s_Requests.stream, 2);
+                                            write(sockDataClient, UseResponse, sizeof(UseResponse));
+                                        }
+                                        else{
+                                            printf("Ouch\r\n");
+                                        }
+                                        //l_bufferRequestsForActualServer.push(s_Requests);
+                                        //mtx_q_ReqActuServer.unlock();
+                                    } 
                                     else if (bl_UseReplication)
                                         l_bufferRequests.push_front(s_Requests);
                                     else{
-                                        printf("Should not pass here\r\n");
-                                        l_bufferRequestsForActualServer.push_front(s_Requests);
+                                        printf("Ce message signifie que ça pue la merde ton programme Billy\r\n");
                                     }
+                                    // else{
+                                    //     while (!mtx_q_ReqActuServer.try_lock()){}
+                                    //     printf("Should not pass here\r\n");
+                                    //     l_bufferRequestsForActualServer.push(s_Requests);
+                                    //     mtx_q_ReqActuServer.unlock();
+                                    // }
                                     break;
                                 case _EXECUTE_STATEMENT:
                                     memcpy(s_PrepAndExec_ToSend.head, header, sizeof(header));
@@ -429,32 +467,42 @@ void* TraitementFrameData(void* arg) {
     pthread_exit(NULL);
 }
 
-void* TraitementRequests(void* arg) {
+/*void* TraitementRequests(void* arg) {
     SQLRequests tempReq;
     char TempReq[2048];
     try {
         while (bl_loop) {
             if (l_bufferRequestsForActualServer.size() > 0) {
-                printf("Prob here, size buffer : %zu\r\n", l_bufferRequestsForActualServer.size());
-                // timestamp("Frame for actual server", std::chrono::high_resolution_clock::now());
-                memcpy(TempReq, l_bufferRequestsForActualServer.back().request, 2048);
-                tempReq.request = std::string(TempReq);
-                memcpy(tempReq.stream, l_bufferRequestsForActualServer.back().stream, 2);
-                tempReq.origin = l_bufferRequestsForActualServer.back().origin;
-                l_bufferRequestsForActualServer.pop_back();
-                if(tempReq.request.substr(0,3) == "USE"){
-                    memcpy(&UseResponse[2], &tempReq.stream, 2);
-                    //ADDED
-                    if (tempReq.origin == 0)
-                        write(sockDataClient, UseResponse, sizeof(UseResponse));
-                    else if (tempReq.origin == 1)
-                        write(client_connection, UseResponse, sizeof(UseResponse));
+                if(mtx_q_ReqActuServer.try_lock()){
+                    if (l_bufferRequestsForActualServer.size() > 0) {
+                        printf("Prob here, size buffer : %zu\r\n", l_bufferRequestsForActualServer.size());
+                        memcpy(TempReq, l_bufferRequestsForActualServer.front().request, 2048);
+                        memcpy(tempReq.stream, l_bufferRequestsForActualServer.front().stream, 2);
+                        tempReq.origin = l_bufferRequestsForActualServer.front().origin;
+                        l_bufferRequestsForActualServer.pop();
+                        mtx_q_ReqActuServer.unlock();
+                        tempReq.request = std::string(TempReq);
+                        if(tempReq.request.substr(0,3) == "USE"){
+                            memcpy(&UseResponse[2], &tempReq.stream, 2);
+                            if (tempReq.origin == 0)
+                                write(sockDataClient, UseResponse, sizeof(UseResponse));
+                            else if (tempReq.origin == 1)
+                                write(client_connection, UseResponse, sizeof(UseResponse));
+                        }
+                        else{
+                            printf("Nani???\r\n");
+                        }
+                    }
+                    else{
+                        mtx_q_ReqActuServer.unlock();
+                    }
                 }
-
-                // timestamp("Calling CQLToSQL", std::chrono::high_resolution_clock::now());
+                else{
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
             }
             else{
-                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
     }
@@ -462,7 +510,7 @@ void* TraitementRequests(void* arg) {
         logs("TraitementRequests() : " + std::string(e.what()), ERROR);
     }
     pthread_exit(NULL);
-}
+}*/
 
 #pragma endregion Requests
 
@@ -594,7 +642,8 @@ void* INITSocket_Redirection(void* arg)
     //ADDED
     req.origin = 1;
     //ENDADDED
-    l_bufferRequestsForActualServer.push_front(req);
+    printf("Not here normally\r\n");
+    l_bufferRequestsForActualServer.push(req);
     cout << endl << buffer << endl;
 
     return NULL;
@@ -788,7 +837,8 @@ void* redirecting(void* arg)
                 //Envoi vers PostgreSQL
                 // req.Request=tempReq.c_str();
                 memcpy(req.request, tempReq.c_str(), tempReq.length());
-                l_bufferRequestsForActualServer.push_front(req);
+                printf("Not here normally\r\n");
+                l_bufferRequestsForActualServer.push(req);
                 cout << "Requete a envoyer vers PostgreSQL" << endl;
             }
             key_from_cql_query = "";
