@@ -50,8 +50,11 @@ struct replication_relation     //ensemble de deux serveurs pour la réplication
 };
 //ENDADDED
 
-void* ConnPGSQLPrepStatements(void*);        //CHANGED
+void* ConnPGSQLPrepStatements(void*);
 void AddToQueue(PrepAndExecReq);
-void PrepExecStatement(PGconn*, PGconn*, server, server);       //CHANGED
+void PrepExecStatement(PGconn*);
+//ADDED
+void PrepExecStatement(PGconn*, PGconn*, server, server);
+//ENDADDED
 void Ending();
 #endif

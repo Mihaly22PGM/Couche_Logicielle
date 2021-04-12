@@ -149,15 +149,15 @@ server server_C = { "RWCS-vServer3", 2, "192.168.82.63" };
 server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };*/
-server server_A = { "RWCS-vServer1", 0, "192.168.82.63" };
-server server_B = { "RWCS-vServer2", 1, "192.168.82.61" };
-server server_C = { "RWCS-vServer3", 2, "192.168.82.64" };
-server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
-server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
-server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };
+server server_A = { "RWCS_vServer1", 0, "192.168.82.58" };
+server server_B = { "RWCS_vServer2", 1, "192.168.82.61" };
+server server_C = { "RWCS_vServer3", 2, "192.168.82.64" };
+server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
+server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
+server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };
 //ADDED
 //Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
-vector<server> l_servers = { server_A, server_B, server_C/*, server_D, server_E, server_F*/ };
+vector<server> l_servers = { server_A/*, server_B, server_C, server_D, server_E, server_F*/ };
 //ENDADDED
 
 #pragma endregion Global
@@ -251,8 +251,13 @@ int main(int argc, char* argv[])
     //ADDED
     else
     {
+        //TEMPORARY
+        actual_server = server_D;
+        subscriber_server = server_E;
+        replication_relation actual_and_subscriber = { actual_server, subscriber_server };
+        //ENDTEMPORARY
         for (int i = 0; i < _THREDS_EXEC_NUMBER; i++)
-            CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, NULL);
+            CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, /*NULL */(void*)&actual_and_subscriber);        //...
     }
     //ENDADDED
     //Starting threads for sockets
