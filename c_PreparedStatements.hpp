@@ -31,6 +31,9 @@ struct SQLPrepRequests {
 struct PrepAndExecReq {
     unsigned char head[13];
     unsigned char CQLStatement[2048];
+    //ADDED
+    int origin;
+    //ENDADDED
 };
 
 //MOVED

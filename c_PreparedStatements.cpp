@@ -10,10 +10,33 @@ std::mutex mtx_accessQueue;
 std::mutex mtx_writeOrder;
 std::mutex mtx_writeClient;
 bool bl_continueThread = true;
-//ADDED
-bool bl_notPublished = true;
-bool bl_notSubscribed = true;
-//ENDADDED
+
+//MOVED
+const char* conninfoPrepState = "user = postgres";
+const char connection_string_host[] = "host = ";      //...destination_server.server_ip_address
+const char connection_string_user[] = " user = postgres password = Gang-bang69";
+
+const char createTable_Req[] = "CREATE TABLE ";
+const char createTableColumns_Req[] = " (column_name varchar(255), value varchar(255));";
+const char prepINSERT_Req[] = "INSERT INTO ";
+const char prepINSERTColumns_Req[] = " (column_name, value) VALUES ($1::varchar,$2::varchar);";
+const char desalocateReq[] = "DEALLOCATE ";
+
+/*char createPublication_Req[] = "CREATE PUBLICATION publication_";       //...origin_server.server_name
+char createPublicationTables_Req[] = " FOR TABLE ";     //...tableName
+char creatSubscription_Req[] = "CREATE SUBSCRIPTION subscription_";         //...destination_server.server_name
+char creatSubscriptionConnection_Req[] = " CONNECTION 'host=";      //...origin_server.server_ip_address
+char creatSubscriptionPublication_Req[] = " user=postgres dbname=postgres password=Gang-bang69' PUBLICATION publication_";       //...origin_server.server_name*/
+const char alterPublication_Req[] = "ALTER PUBLICATION publication_";      //...origin_server.server_name
+const char alterPublicationAdd_Req[] = " ADD TABLE ";     //...tableName
+const char alterSubscription_Req[] = "ALTER SUBSCRIPTION subscription_";      //..destination_server.server_name
+const char alterSubscriptionRefresh_Req[] = " REFRESH PUBLICATION;";
+
+const char stockPrepReq[10] = { 0x31, 0x30, 0x37, 0x36, 0x39, 0x38, 0x33, 0x32, 0x35, 0x34 };
+
+const int paramLengths[2] = { 6, 100 };
+const int paramFormats[2] = { 0, 0 };
+//ENDMOVED
 //#pragma endregion Global
 
 //#pragma region Functions
@@ -21,7 +44,6 @@ void* ConnPGSQLPrepStatements(void* arg) {    //Create the threads that will rea
     //Definitions
     PGconn* connPrepState;
     PGresult* resPrepState;
-    const char* conninfoPrepState = "user = postgres";
     //Execution
     connPrepState = PQconnectdb(conninfoPrepState);
     /* Check to see that the backend connection was successfully made */
@@ -43,18 +65,22 @@ void* ConnPGSQLPrepStatements(void* arg) {    //Create the threads that will rea
     //ADDED
     if (arg != NULL)
     {
-        std::cout << "azerty 1" << std::endl;
         replication_relation* replication_servers = (replication_relation*)arg;
-        std::cout << "azerty 2" << std::endl;
         server origin_server = replication_servers->publisher;
-        std::cout << "Serveur origine: " << origin_server.server_id << " | " << origin_server.server_ip_address << " | " << origin_server.server_name << std::endl;
+        //std::cout << "Serveur origine: " << origin_server.server_id << " | " << origin_server.server_ip_address << " | " << origin_server.server_name << std::endl;
         server destination_server = replication_servers->subscriber;
-        std::cout << "Serveur destination: " << destination_server.server_id << " | " << destination_server.server_ip_address << " | " << destination_server.server_name << std::endl;
+        //std::cout << "Serveur destination: " << destination_server.server_id << " | " << destination_server.server_ip_address << " | " << destination_server.server_name << std::endl;
 
         PGconn* replic_connPrepState;
         PGresult* replic_resPrepState;
-        const char* replic_conninfoPrepState = "host = 192.168.82.58 user = postgres password = Gang-bang69";       //...   
-        //Execution
+
+        char replic_conninfoPrepState[65];
+        memcpy(&replic_conninfoPrepState[0], &connection_string_host[0], sizeof(connection_string_host) - 1);
+        memcpy(&replic_conninfoPrepState[sizeof(connection_string_host) - 1], &(destination_server.server_ip_address.c_str())[0], destination_server.server_ip_address.length());
+        memcpy(&replic_conninfoPrepState[sizeof(connection_string_host) - 1 + destination_server.server_ip_address.length()], &connection_string_user[0], sizeof(connection_string_user) - 1);
+        /*for(int i = 0; i < sizeof(replic_conninfoPrepState); i++)
+            std::cout << replic_conninfoPrepState[i];*/
+            //Execution
         replic_connPrepState = PQconnectdb(replic_conninfoPrepState);
         /* Check to see that the backend connection was successfully made */
         if (PQstatus(replic_connPrepState) != CONNECTION_OK)
@@ -70,7 +96,7 @@ void* ConnPGSQLPrepStatements(void* arg) {    //Create the threads that will rea
         }
         else
         {
-            std::cout << "Connecte au subscriber" << std::endl;
+            //std::cout << "Connecte au subscriber" << std::endl;
             logs("ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess");
         }
         PQclear(replic_resPrepState);
@@ -99,16 +125,10 @@ void Ending() {
 }
 
 void PrepExecStatement(PGconn* connPrepState) {
-    char createTable_Req[] = "CREATE TABLE ";
-    char createTableColumns_Req[] = " (column_name varchar(255), value varchar(255));";
-    char prepINSERT_Req[] = "INSERT INTO ";
-    char prepINSERTColumns_Req[] = " (column_name, value) VALUES ($1::varchar,$2::varchar);";
-    char desalocateReq[] = "DEALLOCATE ";
     PGresult* prep;
     PGresult* prepExec;
     PGresult* resCreateTable;
     PrepAndExecReq s_Thr_PrepAndExec;
-    char stockPrepReq[10] = { 0x31, 0x30, 0x37, 0x36, 0x39, 0x38, 0x33, 0x32, 0x35, 0x34 };
     char* paramValues[2] = { "fieldx", "" };
     char unsigned PreparedReqID[18];
     unsigned char ResponseToExecute[13] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };
@@ -136,8 +156,6 @@ void PrepExecStatement(PGconn* connPrepState) {
     char tableName[24];
     int cursor = 0;
     int fieldOrder = 0;
-    int paramLengths[2] = { 6, 100 };
-    int paramFormats[2] = { 0, 0 };
     // std::ostringstream ss;
     // ss <<  std::this_thread::get_id();
     // std::string idThread = ss.str();
@@ -202,14 +220,18 @@ void PrepExecStatement(PGconn* connPrepState) {
                                         if (PQresultStatus(prepExec) == PGRES_COMMAND_OK) {
                                             if (fieldOrder == 9) {
                                                 memcpy(&ResponseToExecute[2], &s_Thr_PrepAndExec.head[2], 2);
-                                                write(GetSocket(), &ResponseToExecute, 13);
+                                                //CHANGED
+                                                write(s_Thr_PrepAndExec.origin, &ResponseToExecute, 13);
+                                                //ENDCHANGED
                                             }
                                         }
                                         else {
                                             // printf("HERE?\r\n");
                                             // logsPGSQL(PQresultErrorMessage(prepExec), ERROR);
                                             memcpy(&ResponseToExecute[2], &s_Thr_PrepAndExec.head[2], 2);
-                                            write(GetSocket(), &ResponseToExecute, 13);
+                                            //CHANGED
+                                            write(s_Thr_PrepAndExec.origin, &ResponseToExecute, 13);
+                                            //ENDCHANGED
                                             break;
                                         }
                                         cursor += 104;
@@ -246,33 +268,15 @@ void PrepExecStatement(PGconn* connPrepState) {
 
 //ADDED
 void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, server origin_server, server destination_server) {
-    char createTable_Req[] = "CREATE TABLE ";
-    char createTableColumns_Req[] = " (column_name varchar(255), value varchar(255));";
-    char prepINSERT_Req[] = "INSERT INTO ";
-    char prepINSERTColumns_Req[] = " (column_name, value) VALUES ($1::varchar,$2::varchar);";
-    char desalocateReq[] = "DEALLOCATE ";
-    //ADDED
-    char createPublication_Req[] = "CREATE PUBLICATION publication_";       //...origin_server.server_name
-    char createPublicationTables_Req[] = " FOR TABLE ";     //...tableName
-
-    char creatSubscription_Req[] = "CREATE SUBSCRIPTION subscription_";         //...destination_server.server_name
-    char creatSubscriptionConnection_Req[] = " CONNECTION 'host=";      //...origin_server.server_ip_address
-    char creatSubscriptionPublication_Req[] = " user=postgres dbname=postgres password=Gang-bang69' PUBLICATION publication_";       //...origin_server.server_name
-
-    char alterPublication_Req[] = "ALTER PUBLICATION publication_";      //...origin_server.server_name
-    char alterPublicationAdd_Req[] = " ADD TABLE ";     //...tableName
-
-    char alterSubscription_Req[] = "ALTER SUBSCRIPTION subscription_";      //..destination_server.server_name
-    char alterSubscriptionRefresh_Req[] = " REFRESH PUBLICATION;";
-    //ENDADDED
     PGresult* prep;
     PGresult* prepExec;
     PGresult* resCreateTable;
     //ADDED
+    PGresult* resAlterPublication;
     PGresult* replic_resCreateTable;
+    PGresult* replic_resAlterSubscription;
     //ENDADDED
     PrepAndExecReq s_Thr_PrepAndExec;
-    char stockPrepReq[10] = { 0x31, 0x30, 0x37, 0x36, 0x39, 0x38, 0x33, 0x32, 0x35, 0x34 };
     char* paramValues[2] = { "fieldx", "" };
     char unsigned PreparedReqID[18];
     unsigned char ResponseToExecute[13] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };
@@ -300,13 +304,12 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
     char tableName[24];
     int cursor = 0;
     int fieldOrder = 0;
-    int paramLengths[2] = { 6, 100 };
-    int paramFormats[2] = { 0, 0 };
+
     //ADDED
     //(Longueurs estimées par rapport à ce qu'ils allaient contenir)
     int size = 0;
-    char createPublication[100];
-    char createSubscription[175];
+    /*char createPublication[100];
+    char createSubscription[175];*/
     char alterPublication[90];
     char alterSubscription[100];
     //ENDADDED
@@ -353,76 +356,56 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                             memcpy(&createTable[13 + tableNameSize], &createTableColumns_Req[0], sizeof(createTableColumns_Req));   //COPY columns name
                             memcpy(&prepreq[12 + tableNameSize], &prepINSERTColumns_Req[0], sizeof(prepINSERTColumns_Req));
                             // timestamp("PG comm start "+ idThread, std::chrono::high_resolution_clock::now());           //PERF OK
-                            resCreateTable = PQexec(connPrepState, createTable);
 
+                            //CREATE TABLE on publisher
+                            resCreateTable = PQexec(connPrepState, createTable);
+                            //ADDED
+                            //ALTER PUBLICATION
+                            size = 0;
+                            memset(alterPublication, 0x00, sizeof(alterPublication));
+
+                            memcpy(&alterPublication[size], &alterPublication_Req[0], sizeof(alterPublication_Req) - 1);
+                            size += sizeof(alterPublication_Req) - 1;
+                            memcpy(&alterPublication[size], &(origin_server.server_name.c_str())[0], origin_server.server_name.length());
+                            size += origin_server.server_name.length();
+                            memcpy(&alterPublication[size], &alterPublicationAdd_Req[0], sizeof(alterPublicationAdd_Req) - 1);
+                            size += sizeof(alterPublicationAdd_Req) - 1;
+                            memcpy(&alterPublication[size], &tableName[0], tableNameSize);
+                            size += tableNameSize;
+                            alterPublication[size] = ';';
+                            //std::cout << "STATUS: " << PQresultStatus(resCreateTable) << std::endl;
+
+                            resAlterPublication = PQexec(connPrepState, alterPublication);
+
+                            PQclear(resAlterPublication);
+                            /*std::cout << "alterPublication done" << std::endl;
+                            for(int i = 0; i < sizeof(alterPublication); i++)
+                                std::cout << alterPublication[i];*/
+
+                                //CREATE TABLE on subscriber
+                            replic_resCreateTable = PQexec(replic_connPrepState, createTable);      //Execute la même requête de création de table sur le subscriber
+                            PQclear(replic_resCreateTable);
+                            //ALTER SUBSCRIPTION
+                            size = 0;
+                            memset(alterSubscription, 0x00, sizeof(alterSubscription));
+
+                            memcpy(&alterSubscription[size], &alterSubscription_Req[0], sizeof(alterSubscription_Req) - 1);
+                            size += sizeof(alterSubscription_Req) - 1;
+                            memcpy(&alterSubscription[size], &(destination_server.server_name.c_str())[0], destination_server.server_name.length());
+                            size += destination_server.server_name.length();
+                            memcpy(&alterSubscription[size], &alterSubscriptionRefresh_Req[0], sizeof(alterSubscriptionRefresh_Req) - 1);
+                            //std::cout << "STATUS: " << PQresultStatus(replic_resCreateTable) << std::endl;
+
+                            replic_resAlterSubscription = PQexec(replic_connPrepState, alterSubscription);
+                            PQclear(replic_resAlterSubscription);
+                            /*std::cout << "alterSubscription done" << std::endl;
+                            for(int i = 0; i < sizeof(alterSubscription); i++)
+                                std::cout << alterSubscription[i];*/
+                                //ENDADDED
                             if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
                             {
                                 PQclear(resCreateTable);
-                                //ADDED
-                                if (bl_notPublished == true)
-                                {
-                                    size = 0;
-                                    memset(createPublication, 0x00, sizeof(createPublication));
 
-                                    memcpy(&createPublication[size], &createPublication_Req[0], sizeof(createPublication_Req) - 1);
-                                    size += sizeof(createPublication_Req) - 1;
-                                    memcpy(&createPublication[size], &(origin_server.server_name.c_str())[0], origin_server.server_name.length());
-                                    size += origin_server.server_name.length();
-                                    memcpy(&createPublication[size], &createPublicationTables_Req[0], sizeof(createPublicationTables_Req) - 1);
-                                    size += sizeof(createPublicationTables_Req) - 1;
-                                    memcpy(&createPublication[size], &tableName[0], tableNameSize);
-                                    size += tableNameSize;
-                                    createPublication[size] = ';';
-                                    //std::cout << "STATUS: " << PQresultStatus(resCreateTable) << std::endl;
-
-                                    resCreateTable = PQexec(connPrepState, createPublication);
-                                    bl_notPublished = false;
-                                    PQclear(resCreateTable);
-                                    std::cout << "createPublication done" << std::endl;
-                                    for (int i = 0; i < sizeof(createPublication); i++)
-                                        std::cout << createPublication[i];
-                                    /*if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
-                                    {
-                                        bl_notPublished = false;
-                                        PQclear(resCreateTable);
-                                        std::cout << "createPublication done" << std::endl;
-                                    }
-                                    else
-                                        logsPGSQL(createPublication, ERROR);*/
-
-                                }
-                                else
-                                {
-                                    size = 0;
-                                    memset(alterPublication, 0x00, sizeof(alterPublication));
-
-                                    memcpy(&alterPublication[size], &alterPublication_Req[0], sizeof(alterPublication_Req) - 1);
-                                    size += sizeof(alterPublication_Req) - 1;
-                                    memcpy(&alterPublication[size], &(origin_server.server_name.c_str())[0], origin_server.server_name.length());
-                                    size += sizeof(origin_server.server_name);
-                                    memcpy(&alterPublication[size], &alterPublicationAdd_Req[0], sizeof(alterPublicationAdd_Req) - 1);
-                                    size += sizeof(alterPublicationAdd_Req) - 1;
-                                    memcpy(&alterPublication[size], &tableName[0], tableNameSize);
-                                    size += tableNameSize;
-                                    alterPublication[size] = ';';
-                                    //std::cout << "STATUS: " << PQresultStatus(resCreateTable) << std::endl;
-
-                                    resCreateTable = PQexec(connPrepState, alterPublication);
-                                    bl_notPublished = false;
-                                    PQclear(resCreateTable);
-                                    std::cout << "alterPublication done" << std::endl;
-                                    for (int i = 0; i < sizeof(alterPublication); i++)
-                                        std::cout << alterPublication[i];
-                                    /*if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
-                                    {
-                                        bl_notPublished = false;
-                                        PQclear(resCreateTable);
-                                        std::cout << "alterPublication done" << std::endl;
-                                    }
-                                    else
-                                        logsPGSQL(alterPublication, ERROR);*/
-
-                                }
                                 // timestamp("CREATE TABLE time "+ idThread, std::chrono::high_resolution_clock::now());
                                 // logsPGSQL(createTable);
                                 prep = PQprepare(connPrepState, tableName, prepreq, 2, (const Oid)NULL); //TODO maybe tableName not good, to check and maybe delete prep requests after if needed
@@ -440,14 +423,18 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                                         if (PQresultStatus(prepExec) == PGRES_COMMAND_OK) {
                                             if (fieldOrder == 9) {
                                                 memcpy(&ResponseToExecute[2], &s_Thr_PrepAndExec.head[2], 2);
-                                                write(GetSocket(), &ResponseToExecute, 13);
+                                                //CHANGED
+                                                write(s_Thr_PrepAndExec.origin, &ResponseToExecute, 13);
+                                                //ENDCHANGED
                                             }
                                         }
                                         else {
                                             // printf("HERE?\r\n");
                                             // logsPGSQL(PQresultErrorMessage(prepExec), ERROR);
                                             memcpy(&ResponseToExecute[2], &s_Thr_PrepAndExec.head[2], 2);
-                                            write(GetSocket(), &ResponseToExecute, 13);
+                                            //CHANGED
+                                            write(s_Thr_PrepAndExec.origin, &ResponseToExecute, 13);
+                                            //ENDCHANGED
                                             break;
                                         }
                                         cursor += 104;
@@ -463,85 +450,6 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                             else {
                                 logsPGSQL(createTable, ERROR);
                             }
-
-                            //ADDED
-                            replic_resCreateTable = PQexec(replic_connPrepState, createTable);      //Execute la même requête de création de table sur le subscriber
-                            if (PQresultStatus(replic_resCreateTable) == PGRES_COMMAND_OK)
-                            {
-                                PQclear(replic_resCreateTable);
-                                if (bl_notSubscribed == true)
-                                {
-                                    size = 0;
-                                    memset(createSubscription, 0x00, sizeof(createSubscription));
-
-                                    memcpy(&createSubscription[size], &creatSubscription_Req[0], sizeof(creatSubscription_Req) - 1);
-                                    size += sizeof(creatSubscription_Req) - 1;
-                                    memcpy(&createSubscription[size], &(destination_server.server_name.c_str())[0], destination_server.server_name.length());
-                                    size += destination_server.server_name.length();
-                                    memcpy(&createSubscription[size], &creatSubscriptionConnection_Req[0], sizeof(creatSubscriptionConnection_Req) - 1);
-                                    size += sizeof(creatSubscriptionConnection_Req) - 1;
-                                    memcpy(&createSubscription[size], &(origin_server.server_ip_address.c_str())[0], origin_server.server_ip_address.length());
-                                    size += origin_server.server_ip_address.length();
-                                    memcpy(&createSubscription[size], &creatSubscriptionPublication_Req[0], sizeof(creatSubscriptionPublication_Req) - 1);
-                                    size += sizeof(creatSubscriptionPublication_Req) - 1;
-                                    memcpy(&createSubscription[size], &(origin_server.server_name.c_str())[0], origin_server.server_name.length());
-                                    size += origin_server.server_name.length();
-                                    createSubscription[size] = ';';
-                                    //std::cout << "STATUS: " << PQresultStatus(replic_resCreateTable) << std::endl;
-
-                                    replic_resCreateTable = PQexec(replic_connPrepState, createSubscription);
-                                    bl_notSubscribed = false;
-                                    PQclear(replic_resCreateTable);
-                                    std::cout << "createSubscription done" << std::endl;
-                                    for (int i = 0; i < sizeof(createSubscription); i++)
-                                        std::cout << createSubscription[i];
-                                    /*if (PQresultStatus(replic_resCreateTable) == PGRES_COMMAND_OK)
-                                    {
-                                        bl_notSubscribed = false;
-                                        PQclear(replic_resCreateTable);
-                                        std::cout << "createSubscription done" << std::endl;
-                                    }
-                                    else
-                                        logsPGSQL(createSubscription, ERROR);*/
-
-                                }
-                                else
-                                {
-                                    size = 0;
-                                    memset(alterSubscription, 0x00, sizeof(alterSubscription));
-
-                                    memcpy(&alterSubscription[size], &alterSubscription_Req[0], sizeof(alterSubscription_Req) - 1);
-                                    size += sizeof(alterSubscription_Req) - 1;
-                                    memcpy(&alterSubscription[size], &(destination_server.server_name.c_str())[0], destination_server.server_name.length());
-                                    size += destination_server.server_name.length();
-                                    memcpy(&alterSubscription[size], &alterSubscriptionRefresh_Req[0], sizeof(alterSubscriptionRefresh_Req) - 1);
-                                    //std::cout << "STATUS: " << PQresultStatus(replic_resCreateTable) << std::endl;
-
-                                    replic_resCreateTable = PQexec(replic_connPrepState, alterSubscription);
-                                    bl_notSubscribed = false;
-                                    PQclear(replic_resCreateTable);
-                                    std::cout << "alterSubscription done" << std::endl;
-                                    for (int i = 0; i < sizeof(alterSubscription); i++)
-                                        std::cout << alterSubscription[i];
-                                    /*if (PQresultStatus(replic_resCreateTable) == PGRES_COMMAND_OK)
-                                    {
-                                        bl_notSubscribed = false;
-                                        PQclear(replic_resCreateTable);
-                                        std::cout << "alterSubscription done" << std::endl;
-                                    }
-                                    else
-                                        logsPGSQL(alterSubscription, ERROR);*/
-                                }
-                            }
-
-                            /*if(bl_notPublished == false)
-                            {
-                                std::cout << "Publication and subscription done for table";
-                                for(int i = 0; i < sizeof(tableName); i++)
-                                    std::cout << tableName[i];
-                                std::cout << std::endl;
-                            }*/
-                            //ENDADDED
                             memset(tableName, 0x00, sizeof(tableName));
 
                             // timestamp("Exec time "+ idThread, std::chrono::high_resolution_clock::now());
