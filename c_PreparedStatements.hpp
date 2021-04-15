@@ -36,6 +36,5 @@ struct PrepAndExecReq{
 void* ConnPGSQLPrepStatements(void*);
 void AddToQueue(PrepAndExecReq);
 void PrepExecStatement(PGconn*);
-void PrepExecStatementRun(PGconn*);
 void Ending();
 #endif
