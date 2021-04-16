@@ -14,6 +14,7 @@
 // #include <mutex>
 // #include <std::string.h>
 #include <algorithm>
+#include <fcntl.h>
 // #include <future>
 #include "c_Socket.hpp"
 #include "c_Logs.hpp"
@@ -70,12 +71,6 @@ struct Requests {
 //     std::string request;
 //     int origin; //0 = issu du serveur, 1 = issu de la redirection
 // };
-struct server
-{
-    std::string server_name;
-    int server_id;
-    std::string server_ip_address;
-};
 struct char_array{
    unsigned char chararray[131072];
 };
@@ -111,7 +106,7 @@ std::string _incoming_cql_query = "";
 SOCKET sockServer;
 SOCKET sockDataClient;
 unsigned char UseResponse[] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62 };
-
+unsigned char ResponseExecute[13] = {0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01}; 
 int socket_for_client, client_connection;
 // unsigned char perm_double_zero[2] = { 0x00, 0x00 };
 // unsigned char perm_column_separator[2] = { 0x00, 0x0d };
@@ -125,6 +120,7 @@ pthread_t th_Requests;
 pthread_t th_Redirecting;
 pthread_t th_INITSocket_Redirection;
 pthread_t th_PrepExec[_THREDS_EXEC_NUMBER];
+pthread_t th_Listening_socket;
 std::mutex mtx_q_frames;
 std::mutex mtx_q_ReqActuServer;
 
@@ -132,22 +128,28 @@ PGconn* conn;
 PGresult* res;
 
 int autoclose = 0;  //TO close prog after 30 secs
-int server_count = 2;
+//int server_count = 2;
 server actual_server;
+server subscriber_server;
 server neighbor_server_1;
-server neighbor_server_2;
+//server neighbor_server_2;
 server server_to_redirect;
 int port = 8042;
 std::queue<Requests> l_bufferRequestsForActualServer;    //CHANGED
-int socket_neighbor_1, socket_neighbor_2;
+int socket_neighbor_1/*, socket_neighbor_2*/;
 
+std::vector<int> accepted_connections, connected_connections;
 //Liste des serveurs
-server server_A = { "RWCS-vServer1", 0, "192.168.82.55" };
-server server_B = { "RWCS-vServer2", 1, "192.168.82.61" };
-server server_C = { "RWCS-vServer3", 2, "192.168.82.63" };
-server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
-server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
-server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };
+server server_A = { "RWCS_vServer1", 0, "192.168.82.55" };  //TODO change
+server server_B = { "RWCS_vServer2", 1, "192.168.82.59" };
+server server_C = { "RWCS_vServer3", 2, "192.168.82.64" };
+server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
+server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
+server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };
+
+//Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
+std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F*/ };
+const int server_count = l_servers.size();
 
 #pragma endregion Global
 
@@ -187,7 +189,7 @@ unsigned char frameData[131072];
 int autoIncrementRequest = 0;
 std::string usereq="";
 PrepAndExecReq s_PrepAndExec_ToSend;
-
+replication_relation actual_and_subscriber;
 int main(int argc, char* argv[])
 {   
     bl_Load = true;     //Load mode forced
@@ -223,20 +225,26 @@ int main(int argc, char* argv[])
     }
     else
         logs("main() : Starting Proxy...Standalone mode selected");
-    if(bl_UseBench){
-        for(int i=0; i<_THREDS_EXEC_NUMBER; i++){
-            CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)bl_Load);
-        }
-    }
-    
     if (bl_UseReplication) {
         server_identification();
+        actual_and_subscriber = { actual_server, subscriber_server };
+        std::cout << "Serveur actual_server: " << actual_server.server_id << " | " << actual_server.server_ip_address << " | " << actual_server.server_name << std::endl;
+        std::cout << "Serveur subscriber_server: " << subscriber_server.server_id << " | " << subscriber_server.server_ip_address << " | " << subscriber_server.server_name << std::endl;
         int b = 0;
         while (b != 1)
         {
             std::cout << "tape 1 qd la redirection est lancee sur tous les serveurs" << std::endl;
             std::cin >> b;
             std::cout << std::endl;
+        }
+    }
+    if(bl_UseBench){
+        for(int i=0; i<_THREDS_EXEC_NUMBER; i++){
+            // CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)bl_Load);
+            if(bl_UseReplication)
+                CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)&actual_and_subscriber);
+            else
+                CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, NULL);
         }
     }
     //Starting threads for sockets
@@ -264,7 +272,7 @@ int main(int argc, char* argv[])
     logs("main() : Starting Done");
     initClock(std::chrono::high_resolution_clock::now());
     timestamp("Starting Done", std::chrono::high_resolution_clock::now());
-    char_array frameToSend;
+    //char_array frameToSend;
     ssize_t ServerSock=0;
     while (bl_loop) {
         ServerSock = 0;
@@ -272,7 +280,7 @@ int main(int argc, char* argv[])
         if (ServerSock > 0) {
             if(ServerSock > 65000){
                 logs("Attention Billy ça va peter", WARNING);
-                printf("%d\r\n", ServerSock);    
+                //printf("%d\r\n", ServerSock);    
             }
             TraitementFrameData(buffData);
             // timestamp("Received frame", std::chrono::high_resolution_clock::now());
@@ -286,7 +294,7 @@ int main(int argc, char* argv[])
         }
         else{
             autoclose++;
-            if(autoclose>30000){    //Après 30 secondes, fermeture automatique du prog
+            if(autoclose>30000000){    //TODO change this
                 bl_loop =false;
             }
             //std::this_thread::sleep_for(std::chrono::nanoseconds(10));  //DELETE?
@@ -446,11 +454,32 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                                 // }      
                             }
                             else{
-                                logs("Partial request", WARNING);
-                                memset(partialRequest, 0, sizeof(partialRequest));
-                                memset(partialHeader, 0, sizeof(partialHeader));
-                                memcpy(&partialRequest[0], &s_Requests.request[0], sizeof(partialRequest));
-                                memcpy(&partialHeader[0], &header[0], sizeof(partialHeader));
+                                if(s_Requests.opcode[0] == 0x0a){
+                                    //printf("0x%x 0x%x 0x%x 0x%x\r\n", s_Requests.request[91], s_Requests.request[92], s_Requests.request[93], s_Requests.request[94]);
+                                    // printf("0x%x 0x%x 0x%x 0x%x\r\n", s_Requests.request[1], s_Requests.request[2], s_Requests.request[3], s_Requests.request[4]);
+                                    // for(int i=50; i<150; i++){
+                                    //         printf("0x%x ", s_Requests.request[i]);
+                                    //     }
+                                    //                                             printf("\r\n");
+
+                                    if(s_Requests.request[91] == 0x13 || s_Requests.request[91] == 0x88 || s_Requests.request[92] == 0x05 || s_Requests.request[101] == 0xc0){
+                                        printf("Mouais\r\n");
+                                        bl_partialRequest = false;
+                                        memcpy(&ResponseExecute[2], &s_Requests.stream[0], 2);
+                                        write(GetSocket(), ResponseExecute, sizeof(ResponseExecute));
+                                        for(int i=50; i<150; i++){
+                                            printf("0x%x ", s_Requests.request[i]);
+                                        }
+                                        printf("\r\n");
+                                    }
+                                }             
+                                if(bl_partialRequest){
+                                    logs("Partial request", WARNING);
+                                    memset(partialRequest, 0, sizeof(partialRequest));
+                                    memset(partialHeader, 0, sizeof(partialHeader));
+                                    memcpy(&partialRequest[0], &s_Requests.request[0], sizeof(partialRequest));
+                                    memcpy(&partialHeader[0], &header[0], sizeof(partialHeader));
+                                } 
                                 // if(partialRequest[0] == 0x00 && partialRequest[1] == 0x00 && partialRequest[2] == 0x00 && partialRequest[3] == 0x00)
                                 //     bl_partialRequest = false;
                             }//Fin de requête
@@ -618,7 +647,7 @@ void* INITSocket_Redirection(void* arg)
 #pragma endregion Listening
 
 #pragma region Preparation
-void server_identification()
+/*void server_identification()
 {
     if (get_ip_from_actual_server() == server_A.server_ip_address)
     {
@@ -669,6 +698,25 @@ void server_identification()
     //On crée les connexions permanentes avec les serveurs voisins
     socket_neighbor_1 = connect_to_server(neighbor_server_1, port);               //...
     //socket_neighbor_2 = connect_to_server(neighbor_server_2, port);
+}
+*/
+void server_identification()
+{
+    for (int i = 0; i < l_servers.size(); i++)
+    {
+        if (get_ip_from_actual_server() == l_servers[i].server_ip_address)
+        {
+            actual_server = l_servers[i];
+            subscriber_server = l_servers[(i + 1) % l_servers.size()];
+            std::cout << get_ip_from_actual_server() << std::endl;
+            std::cout << "Serveur #" << actual_server.server_id << ", Nom : " << actual_server.server_name << ", Adresse IP: " << actual_server.server_ip_address << std::endl;
+        }
+        else
+        {
+            connected_connections.push_back(connect_to_server(l_servers[i], port));
+            std::cout << "Tentative de connexion avec " << l_servers[i].server_name << " (" << l_servers[i].server_ip_address << ") " << std::endl;
+        }
+    }
 }
 
 std::string get_ip_from_actual_server() {
