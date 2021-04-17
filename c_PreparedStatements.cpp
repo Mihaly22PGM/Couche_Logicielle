@@ -67,9 +67,9 @@ void* ConnPGSQLPrepStatements(void* arg) {    //Create the threads that will rea
     {
         replication_relation* replication_servers = (replication_relation*)arg;
         server origin_server = replication_servers->publisher;
-        //std::cout << "Serveur origine: " << origin_server.server_id << " | " << origin_server.server_ip_address << " | " << origin_server.server_name << std::endl;
+        std::cout << "Serveur origine: " << origin_server.server_id << " | " << origin_server.server_ip_address << " | " << origin_server.server_name << std::endl;
         server destination_server = replication_servers->subscriber;
-        //std::cout << "Serveur destination: " << destination_server.server_id << " | " << destination_server.server_ip_address << " | " << destination_server.server_name << std::endl;
+        std::cout << "Serveur destination: " << destination_server.server_id << " | " << destination_server.server_ip_address << " | " << destination_server.server_name << std::endl;
 
         PGconn* replic_connPrepState;
         PGresult* replic_resPrepState;
@@ -166,12 +166,17 @@ void PrepExecStatement(PGconn* connPrepState) {
                     printf("%zu\r\n", q_PrepAndExecRequests.size());
                     memcpy(&s_Thr_PrepAndExec.head[0], &q_PrepAndExecRequests.front().head[0], sizeof(s_Thr_PrepAndExec.head));
                     memcpy(&s_Thr_PrepAndExec.CQLStatement[0], &q_PrepAndExecRequests.front().CQLStatement[0], sizeof(s_Thr_PrepAndExec.CQLStatement));
+                    //ADDED
+                    s_Thr_PrepAndExec.origin = q_PrepAndExecRequests.front().origin;
+                    //ENDADDED
                     q_PrepAndExecRequests.pop();
                     mtx_accessQueue.unlock();
                     if (s_Thr_PrepAndExec.head[4] == _PREPARE_STATEMENT) {
                         try {
                             memcpy(&ResponseToPrepare[2], &s_Thr_PrepAndExec.head[2], 2);
-                            write(GetSocket(), ResponseToPrepare, sizeof(ResponseToPrepare));
+                            //CHANGED
+                            write(s_Thr_PrepAndExec.origin, ResponseToPrepare, sizeof(ResponseToPrepare));
+                            //ENDCHANGED
                         }
                         catch (std::exception const& e) {
                             logs("PrepStatementResponse() : " + std::string(e.what()), ERROR);
@@ -278,7 +283,7 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
     //ENDADDED
     PrepAndExecReq s_Thr_PrepAndExec;
     char* paramValues[2] = { "fieldx", "" };
-    char unsigned PreparedReqID[18];
+    //char unsigned PreparedReqID[18];
     unsigned char ResponseToExecute[13] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };
     unsigned char ResponseToPrepare[178] = {
         0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0xa9, 0x00, 0x00, 0x00, 0x04, 0x00,
@@ -323,12 +328,25 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                     printf("%zu\r\n", q_PrepAndExecRequests.size());
                     memcpy(&s_Thr_PrepAndExec.head[0], &q_PrepAndExecRequests.front().head[0], sizeof(s_Thr_PrepAndExec.head));
                     memcpy(&s_Thr_PrepAndExec.CQLStatement[0], &q_PrepAndExecRequests.front().CQLStatement[0], sizeof(s_Thr_PrepAndExec.CQLStatement));
+                    //ADDED
+                    s_Thr_PrepAndExec.origin = q_PrepAndExecRequests.front().origin;
+                    /*std::cout << "_PrepAndExecReq.head: " << std::endl;
+                    for(int i = 0; i < sizeof(s_Thr_PrepAndExec.head); i++)
+                        std::cout << q_PrepAndExecRequests.front().head[i];
+                    std::cout << " _PrepAndExecReq.CQLStatement: " << std::endl;
+                    for(int i = 0; i < sizeof(s_Thr_PrepAndExec.CQLStatement); i++)
+                        std::cout <<  q_PrepAndExecRequests.front().CQLStatement[i];*/
+                        //ENDADDED
                     q_PrepAndExecRequests.pop();
                     mtx_accessQueue.unlock();
                     if (s_Thr_PrepAndExec.head[4] == _PREPARE_STATEMENT) {
                         try {
+                            std::cout << "== _PREPARE_STATEMENT" << std::endl;
                             memcpy(&ResponseToPrepare[2], &s_Thr_PrepAndExec.head[2], 2);
-                            write(GetSocket(), ResponseToPrepare, sizeof(ResponseToPrepare));
+                            //CHANGED
+                            write(s_Thr_PrepAndExec.origin, ResponseToPrepare, sizeof(ResponseToPrepare));
+                            std::cout << "WRITED _PREPARE_STATEMENT" << std::endl;
+                            //ENDCHANGED
                         }
                         catch (std::exception const& e) {
                             logs("PrepStatementResponse() : " + std::string(e.what()), ERROR);
@@ -336,8 +354,12 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                     }
                     else if (s_Thr_PrepAndExec.head[4] == _EXECUTE_STATEMENT) {
                         try {
+                            std::cout << "== _EXECUTE_STATEMENT" << std::endl;
                             // timestamp("Start Exec "+ idThread, std::chrono::high_resolution_clock::now());
-                            memcpy(PreparedReqID, &s_Thr_PrepAndExec.CQLStatement[0], 18);
+                            /*memcpy(PreparedReqID, &s_Thr_PrepAndExec.CQLStatement[0], 18);
+                            std::cout << "memcpy PreparedReqID: " << std::endl;
+                            for(int i = 0; i<18;i++)
+                                std::cout << PreparedReqID[i];*/
                             memcpy(tableName, &s_Thr_PrepAndExec.CQLStatement[27], 24);
                             for (tableNameSize = 0; tableNameSize < 24; tableNameSize++) {
                                 if (tableName[tableNameSize] == 0x00) {
@@ -376,13 +398,12 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                             //std::cout << "STATUS: " << PQresultStatus(resCreateTable) << std::endl;
 
                             resAlterPublication = PQexec(connPrepState, alterPublication);
-
+                            std::cout << "alterPublication done" << std::endl;
+                            for (int i = 0; i < sizeof(alterPublication); i++)
+                                std::cout << alterPublication[i];
                             PQclear(resAlterPublication);
-                            /*std::cout << "alterPublication done" << std::endl;
-                            for(int i = 0; i < sizeof(alterPublication); i++)
-                                std::cout << alterPublication[i];*/
 
-                                //CREATE TABLE on subscriber
+                            //CREATE TABLE on subscriber
                             replic_resCreateTable = PQexec(replic_connPrepState, createTable);      //Execute la même requête de création de table sur le subscriber
                             PQclear(replic_resCreateTable);
                             //ALTER SUBSCRIPTION
@@ -397,13 +418,17 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                             //std::cout << "STATUS: " << PQresultStatus(replic_resCreateTable) << std::endl;
 
                             replic_resAlterSubscription = PQexec(replic_connPrepState, alterSubscription);
+                            std::cout << "alterSubscription done" << std::endl;
+                            for (int i = 0; i < sizeof(alterSubscription); i++)
+                                std::cout << alterSubscription[i];
                             PQclear(replic_resAlterSubscription);
-                            /*std::cout << "alterSubscription done" << std::endl;
-                            for(int i = 0; i < sizeof(alterSubscription); i++)
-                                std::cout << alterSubscription[i];*/
-                                //ENDADDED
+
+                            //ENDADDED
                             if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
                             {
+                                std::cout << "J'ai cree la table ";
+                                for (int i = 0; i < 24; i++)
+                                    std::cout << tableName[i];
                                 PQclear(resCreateTable);
 
                                 // timestamp("CREATE TABLE time "+ idThread, std::chrono::high_resolution_clock::now());
@@ -425,6 +450,7 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                                                 memcpy(&ResponseToExecute[2], &s_Thr_PrepAndExec.head[2], 2);
                                                 //CHANGED
                                                 write(s_Thr_PrepAndExec.origin, &ResponseToExecute, 13);
+                                                std::cout << "WRITED _EXECUTE_STATEMENT: == PGRES_COMMAND_OK" << std::endl;
                                                 //ENDCHANGED
                                             }
                                         }
@@ -434,6 +460,7 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                                             memcpy(&ResponseToExecute[2], &s_Thr_PrepAndExec.head[2], 2);
                                             //CHANGED
                                             write(s_Thr_PrepAndExec.origin, &ResponseToExecute, 13);
+                                            std::cout << "WRITED _EXECUTE_STATEMENT: != PGRES_COMMAND_OK" << std::endl;
                                             //ENDCHANGED
                                             break;
                                         }
