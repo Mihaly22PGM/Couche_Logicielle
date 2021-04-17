@@ -227,7 +227,7 @@ int main(int argc, char* argv[])
         logs("main() : Starting Proxy...Standalone mode selected");
     if (bl_UseReplication) {
         server_identification();
-        actual_and_subscriber = { actual_server, subscriber_server };
+        actual_and_subscriber = { actual_server, subscriber_server, 0 };
         std::cout << "Serveur actual_server: " << actual_server.server_id << " | " << actual_server.server_ip_address << " | " << actual_server.server_name << std::endl;
         std::cout << "Serveur subscriber_server: " << subscriber_server.server_id << " | " << subscriber_server.server_ip_address << " | " << subscriber_server.server_name << std::endl;
         int b = 0;
@@ -241,8 +241,10 @@ int main(int argc, char* argv[])
     if(bl_UseBench){
         for(int i=0; i<_THREDS_EXEC_NUMBER; i++){
             // CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)bl_Load);
-            if(bl_UseReplication)
+            if(bl_UseReplication){
+                actual_and_subscriber.th_num = i;
                 CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)&actual_and_subscriber);
+            }
             else
                 CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, NULL);
         }
@@ -278,10 +280,10 @@ int main(int argc, char* argv[])
         ServerSock = 0;
         ServerSock = recv(sockDataClient, &buffData[0], sizeof(buffData), 0);
         if (ServerSock > 0) {
-            if(ServerSock > 65000){
-                logs("Attention Billy ça va peter", WARNING);
-                //printf("%d\r\n", ServerSock);    
-            }
+            // if(ServerSock > 65000){
+            //     logs("Attention Billy ça va peter", WARNING);
+            //     //printf("%d\r\n", ServerSock);    
+            // }
             TraitementFrameData(buffData);
             // timestamp("Received frame", std::chrono::high_resolution_clock::now());
             // memcpy(&frameToSend.chararray[0], &buffData[0], sizeof(buffData));
@@ -428,6 +430,7 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                                 case _EXECUTE_STATEMENT:
                                     memcpy(s_PrepAndExec_ToSend.head, header, sizeof(header));
                                     memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
+                                    s_PrepAndExec_ToSend.origin=GetSocket();
                                     AddToQueue(s_PrepAndExec_ToSend);
                                     memset(s_PrepAndExec_ToSend.head, 0, sizeof(s_PrepAndExec_ToSend.head));
                                     memset(s_PrepAndExec_ToSend.CQLStatement, 0, sizeof(s_PrepAndExec_ToSend.CQLStatement));
@@ -439,6 +442,7 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                                         bl_lastRequestFrame = true;
                                     memcpy(s_PrepAndExec_ToSend.head, header, sizeof(header));
                                     memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
+                                    s_PrepAndExec_ToSend.origin=GetSocket();
                                     AddToQueue(s_PrepAndExec_ToSend);
                                     break;
                                 case _OPTIONS_STATEMENT:
@@ -647,59 +651,6 @@ void* INITSocket_Redirection(void* arg)
 #pragma endregion Listening
 
 #pragma region Preparation
-/*void server_identification()
-{
-    if (get_ip_from_actual_server() == server_A.server_ip_address)
-    {
-        actual_server = server_A;
-        neighbor_server_1 = server_B;
-        //neighbor_server_2 = server_F;
-    }
-
-    else if (get_ip_from_actual_server() == server_B.server_ip_address)
-    {
-        actual_server = server_B;
-        neighbor_server_1 = server_A;
-        //neighbor_server_1 = server_C;
-        //neighbor_server_2 = server_A;
-    }
-
-    else if (get_ip_from_actual_server() == server_C.server_ip_address)
-    {
-        actual_server = server_C;
-        neighbor_server_1 = server_D;
-        neighbor_server_2 = server_B;
-    }
-
-    else if (get_ip_from_actual_server() == server_D.server_ip_address)
-    {
-        actual_server = server_D;
-        neighbor_server_1 = server_E;
-        neighbor_server_2 = server_C;
-    }
-
-    else if (get_ip_from_actual_server() == server_E.server_ip_address)
-    {
-        actual_server = server_E;
-        neighbor_server_1 = server_F;
-        neighbor_server_2 = server_D;
-    }
-
-    else if (get_ip_from_actual_server() == server_F.server_ip_address)
-    {
-        actual_server = server_F;
-        neighbor_server_1 = server_A;
-        neighbor_server_2 = server_E;
-    }
-
-    std::cout << get_ip_from_actual_server() << std::endl;
-    std::cout << "Serveur #" << actual_server.server_id << ", Nom : " << actual_server.server_name << ", Adresse IP: " << actual_server.server_ip_address << std::endl;
-
-    //On crée les connexions permanentes avec les serveurs voisins
-    socket_neighbor_1 = connect_to_server(neighbor_server_1, port);               //...
-    //socket_neighbor_2 = connect_to_server(neighbor_server_2, port);
-}
-*/
 void server_identification()
 {
     for (int i = 0; i < l_servers.size(); i++)

@@ -38,6 +38,7 @@ struct replication_relation     //ensemble de deux serveurs pour la réplication
 {
     server publisher;
     server subscriber;
+    int th_num;
 };
 struct PrepAndExecReq{
     unsigned char head[13];
