@@ -9,7 +9,7 @@ Follow these steps to use the Relational Wide Colomn Store paradigm
 Move to root user (or use sudo with following commands)
 
 Install PostgresSQL and other tools for the prog 
-    apt-get install make g++ gdb postgresql postgresql-client postgresql-contrib libpq-dev
+    apt-get install make g++ gdb postgresql-12 postgresql-client-12 postgresql-contrib libpq-dev
 Configure postgresql
     File location : /etc/postgresql/10/main/postgresql.conf
     See Configs/postgresql.conf

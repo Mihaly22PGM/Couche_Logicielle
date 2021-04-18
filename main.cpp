@@ -653,7 +653,7 @@ void* INITSocket_Redirection(void* arg)
 #pragma region Preparation
 void server_identification()
 {
-    for (int i = 0; i < l_servers.size(); i++)
+    for (unsigned int i = 0; i < l_servers.size(); i++)
     {
         if (get_ip_from_actual_server() == l_servers[i].server_ip_address)
         {
