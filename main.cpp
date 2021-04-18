@@ -136,14 +136,14 @@ server server_C = { "RWCS-vServer3", 2, "192.168.82.63" };
 server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };*/
-server server_A = { "RWCS_vServer5", 0, "192.168.82.58" };
-server server_B = { "RWCS_vServer4", 1, "192.168.82.56" };
+server server_A = { "RWCS_vServer4", 0, "192.168.82.56" };
+server server_B = { "RWCS_vServer5", 1, "192.168.82.58" };
 server server_C = { "RWCS_vServer3", 2, "192.168.82.64" };
 server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };
 //Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
-vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F*/ };
+vector<server> l_servers = { server_A/*, server_B, server_C, server_D, server_E, server_F*/ };
 const int server_count = l_servers.size();
 
 #pragma endregion Global
@@ -407,8 +407,14 @@ void* TraitementFrameData(void* arg) {
                                 memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
                                 //CHANGED
                                 s_PrepAndExec_ToSend.origin = sockDataClient;
-                                BENCH_redirecting(s_PrepAndExec_ToSend);
-                                cout << "_EXECUTE_STATEMENT envoye a BENCH_redirecting depuis le client" << endl;
+                                if (bl_UseReplication) {
+                                    BENCH_redirecting(s_PrepAndExec_ToSend);
+                                    cout << "_EXECUTE_STATEMENT envoye a BENCH_redirecting depuis le client" << endl;
+                                }
+                                else {
+                                    AddToQueue(s_PrepAndExec_ToSend);
+                                    cout << "_EXECUTE_STATEMENT AddToQueue depuis le client" << endl;
+                                }
                                 //ENDCHANGED
                                 memset(s_PrepAndExec_ToSend.head, 0x00, sizeof(s_PrepAndExec_ToSend.head));
                                 memset(s_PrepAndExec_ToSend.CQLStatement, 0x00, sizeof(s_PrepAndExec_ToSend.CQLStatement));

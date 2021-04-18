@@ -398,9 +398,6 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                             //std::cout << "STATUS: " << PQresultStatus(resCreateTable) << std::endl;
 
                             resAlterPublication = PQexec(connPrepState, alterPublication);
-                            std::cout << "alterPublication done" << std::endl;
-                            for (int i = 0; i < sizeof(alterPublication); i++)
-                                std::cout << alterPublication[i];
                             PQclear(resAlterPublication);
 
                             //CREATE TABLE on subscriber
@@ -418,23 +415,18 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                             //std::cout << "STATUS: " << PQresultStatus(replic_resCreateTable) << std::endl;
 
                             replic_resAlterSubscription = PQexec(replic_connPrepState, alterSubscription);
-                            std::cout << "alterSubscription done" << std::endl;
-                            for (int i = 0; i < sizeof(alterSubscription); i++)
-                                std::cout << alterSubscription[i];
                             PQclear(replic_resAlterSubscription);
 
                             //ENDADDED
                             if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
                             {
-                                std::cout << "J'ai cree la table ";
-                                for (int i = 0; i < 24; i++)
-                                    std::cout << tableName[i];
                                 PQclear(resCreateTable);
 
                                 // timestamp("CREATE TABLE time "+ idThread, std::chrono::high_resolution_clock::now());
                                 // logsPGSQL(createTable);
                                 prep = PQprepare(connPrepState, tableName, prepreq, 2, (const Oid)NULL); //TODO maybe tableName not good, to check and maybe delete prep requests after if needed
                                 if (PQresultStatus(prep) == PGRES_COMMAND_OK) {
+                                    std::cout << "PQprepare: == PGRES_COMMAND_OK" << std::endl;
                                     // logsPGSQL(prepreq);
                                     cursor = tableNameSize + 27;
                                     fieldOrder = 0;
@@ -450,7 +442,7 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                                                 memcpy(&ResponseToExecute[2], &s_Thr_PrepAndExec.head[2], 2);
                                                 //CHANGED
                                                 write(s_Thr_PrepAndExec.origin, &ResponseToExecute, 13);
-                                                std::cout << "WRITED _EXECUTE_STATEMENT: == PGRES_COMMAND_OK" << std::endl;
+                                                std::cout << "PQexecPrepared: == PGRES_COMMAND_OK" << std::endl;
                                                 //ENDCHANGED
                                             }
                                         }
@@ -460,7 +452,7 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                                             memcpy(&ResponseToExecute[2], &s_Thr_PrepAndExec.head[2], 2);
                                             //CHANGED
                                             write(s_Thr_PrepAndExec.origin, &ResponseToExecute, 13);
-                                            std::cout << "WRITED _EXECUTE_STATEMENT: != PGRES_COMMAND_OK" << std::endl;
+                                            std::cout << "PQexecPrepared: != PGRES_COMMAND_OK" << std::endl;
                                             //ENDCHANGED
                                             break;
                                         }
@@ -469,6 +461,7 @@ void PrepExecStatement(PGconn* connPrepState, PGconn* replic_connPrepState, serv
                                     }
                                 }
                                 else {
+                                    std::cout << "PQprepare: != PGRES_COMMAND_OK" << std::endl;
                                     logsPGSQL(PQresultErrorMessage(prep), ERROR);
                                 }
                                 PQclear(prep);
