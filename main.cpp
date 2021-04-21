@@ -181,10 +181,8 @@ vector<string> extract_values_data(string);
 vector<string> extract_select_data(string);
 vector<string> extract_set_data(string);
 void* Listening_socket(void*);
-//ADDED
 void send_to_server(int, unsigned char[13], unsigned char[2048]);
 void BENCH_redirecting(PrepAndExecReq);
-//ENDADDED
 #pragma endregion Prototypes
 
 int main(int argc, char* argv[])
@@ -323,11 +321,9 @@ void* TraitementFrameData(void* arg) {
     unsigned char frameData[65536];
     int autoIncrementRequest = 0;
     PrepAndExecReq s_PrepAndExec_ToSend;
-    //MOVED
     unsigned char header[13];
     bool bl_lastRequestFrame = false;
     Requests s_Requests;
-    //ENDMOVED
     try {
         memset(&test[0], 0, sizeof(test));
         memset(&header[0], 0, sizeof(header));
@@ -405,7 +401,6 @@ void* TraitementFrameData(void* arg) {
                             case _EXECUTE_STATEMENT:
                                 memcpy(s_PrepAndExec_ToSend.head, header, sizeof(header));
                                 memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
-                                //CHANGED
                                 s_PrepAndExec_ToSend.origin = sockDataClient;
                                 if (bl_UseReplication) {
                                     BENCH_redirecting(s_PrepAndExec_ToSend);
@@ -415,7 +410,6 @@ void* TraitementFrameData(void* arg) {
                                     AddToQueue(s_PrepAndExec_ToSend);
                                     cout << "_EXECUTE_STATEMENT AddToQueue depuis le client" << endl;
                                 }
-                                //ENDCHANGED
                                 memset(s_PrepAndExec_ToSend.head, 0x00, sizeof(s_PrepAndExec_ToSend.head));
                                 memset(s_PrepAndExec_ToSend.CQLStatement, 0x00, sizeof(s_PrepAndExec_ToSend.CQLStatement));
                                 if (test[sommeSize] == 0x00)        //Checking last frame
@@ -426,10 +420,8 @@ void* TraitementFrameData(void* arg) {
                                     bl_lastRequestFrame = true;
                                 memcpy(s_PrepAndExec_ToSend.head, header, sizeof(header));
                                 memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
-                                //ADDED
                                 s_PrepAndExec_ToSend.origin = sockDataClient;
                                 cout << "_PREPARE_STATEMENT AddToQueue depuis le client" << endl;
-                                //ENDADDED
                                 AddToQueue(s_PrepAndExec_ToSend);
                                 break;
                             case _OPTIONS_STATEMENT:
@@ -1345,7 +1337,6 @@ void* INITSocket_Redirection(void* arg)
         {
             if (recv(accepted_connections[i], buffer, sizeof(buffer), 0) > 0)
             {
-                //ADDED
                 unsigned int sommeSize = 0;
                 bool bl_partialRequest = false;
                 unsigned char partialRequest[2048];
@@ -1431,10 +1422,8 @@ void* INITSocket_Redirection(void* arg)
                             case _EXECUTE_STATEMENT:
                                 memcpy(s_PrepAndExec_ToSend.head, header, sizeof(header));
                                 memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
-                                //ADDED
                                 s_PrepAndExec_ToSend.origin = accepted_connections[i];
                                 cout << "_EXECUTE_STATEMENT AddToQueue depuis INITSocket_Redirection" << endl;
-                                //ENDADDED
                                 AddToQueue(s_PrepAndExec_ToSend);
                                 memset(s_PrepAndExec_ToSend.head, 0x00, sizeof(s_PrepAndExec_ToSend.head));
                                 memset(s_PrepAndExec_ToSend.CQLStatement, 0x00, sizeof(s_PrepAndExec_ToSend.CQLStatement));
@@ -1446,7 +1435,6 @@ void* INITSocket_Redirection(void* arg)
                                     bl_lastRequestFrame = true;
                                 memcpy(s_PrepAndExec_ToSend.head, header, sizeof(header));
                                 memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
-                                //ADDED
                                 s_PrepAndExec_ToSend.origin = accepted_connections[i];
                                 /*cout << "REDIRECTION_SIZE_PREPARE_STATEMENT: " << s_Requests.size << endl;
                                 cout << "_PREPARE_STATEMENT AddToQueue depuis INITSocket_Redirection" << endl;
@@ -1456,7 +1444,6 @@ void* INITSocket_Redirection(void* arg)
                                 cout << " _PrepAndExecReq.CQLStatement: " << endl;
                                 for(int i = 0; i < s_Requests.size; i++)
                                     cout <<  s_PrepAndExec_ToSend.CQLStatement[i];*/
-                                    //ENDADDED
                                 AddToQueue(s_PrepAndExec_ToSend);
                                 break;
                             case _OPTIONS_STATEMENT:
@@ -1488,7 +1475,6 @@ void* INITSocket_Redirection(void* arg)
                 catch (std::exception const& e) {
                     logs("TraitementRequests() : " + std::string(e.what()), ERROR);
                 }
-                //ENDADDED
             }
         }
     }
@@ -1580,7 +1566,6 @@ void send_to_server(int _socketServer, char _stream_to_send[2], string _query_to
     cout << endl << "Incoming query sent" << endl;
 }
 
-//ADDED
 void send_to_server(int _socketServer, unsigned char _head[13], unsigned char _CQLStatement[2048])
 {
     int size = (unsigned int)_head[7] * 256 + (unsigned int)_head[8];
@@ -1601,7 +1586,6 @@ void send_to_server(int _socketServer, unsigned char _head[13], unsigned char _C
         cout <<  cql_query[13 + i];*/
     cout << endl << "PrepAndExecReq write depuis BENCH_redirecting" << endl;
 }
-//ENDADDED
 #pragma endregion Server_connection
 
 #pragma region Redirecting
@@ -1787,7 +1771,6 @@ void* Listening_socket(void* arg)
     }
 }
 
-//ADDED
 void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
 {
     string str_table_name;
@@ -1863,5 +1846,4 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
 
     //key_from_cql_query = "";
 }
-//ENDADDED
 #pragma endregion Redirecting
