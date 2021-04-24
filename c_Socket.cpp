@@ -9,6 +9,7 @@ char buffClient[1024];
 bool bl_ContinueThreadSocket = true;
 int fr_lengthPGSQL[] = {9, 9, 162, 691,	714, 7240, 7240, 14480, 14118, 668, 9, 691};
 int fr_lengthBench[] = {9, 9, 162, 739, 779, 117, 7240, 7240, 4167, 176, 714, 14480, 9435, 162, 739, 9, 64};
+
 unsigned char fr_connectionPSQL[][15000] = {
 	{0x84, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00},
 
@@ -5849,7 +5850,7 @@ SOCKET CreateSocket(){
 SOCKET INITSocket(SOCKET sockServer, bool modeBench=false){
 	listen(sockServer, 10);
     sockClient = accept(sockServer, (struct sockaddr*)NULL,NULL);
-    int i = 0;
+    int i =0;
 	if(modeBench){
 		while(i<15){
 			int server = recv(sockClient, buffClient, sizeof(buffClient),0);
@@ -5907,8 +5908,6 @@ SOCKET INITSocket(SOCKET sockServer, bool modeBench=false){
 			}
 		}
 	}
-	// fcntl(sockClient, F_SETFL, O_NONBLOCK); 
-    // fcntl(socketDataClient, F_SETFL, O_NONBLOCK); 
 	return socketDataClient;
 }
 
@@ -5932,6 +5931,7 @@ void* TraitementFrameClient(void*){
     }
 	pthread_exit(NULL);
 }
+
 void StopSocketThread(){
 	bl_ContinueThreadSocket = false;
 	return;

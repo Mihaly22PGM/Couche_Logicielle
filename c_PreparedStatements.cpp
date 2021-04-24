@@ -39,7 +39,6 @@ void* ConnPGSQLPrepStatements(void* arg) {    //Create the threads that will rea
     //At the end, closing
     PQfinish(connPrepState);
     logs("ConnPGSQLPrepStatements() : Fermeture du thread");
-    delete arg;
     pthread_exit(NULL);
 }
 
@@ -57,9 +56,10 @@ void Ending(){
 void PrepExecStatement(PGconn *connPrepState, void* arg){
     PGresult *resCreateTable;
     const char* command;
+    const char* command_sub;
     char defaultINSERT[] = "CALL insert_th0($1::varchar(24),$2::char(100),$3::char(100),$4::char(100),$5::char(100),$6::char(100),$7::char(100),$8::char(100),$9::char(100),$10::char(100),$11::char(100));";
+    char defaultINSERTsub[] = "CALL sub_insert_sx_th0($1::varchar(24))";
     const char * paramValues[11];
-    //unsigned char stockPrepReq[10] = {0x31, 0x30, 0x37, 0x36, 0x39, 0x38, 0x33, 0x32, 0x35, 0x34};
     unsigned char ResponseToExecute[13] = {0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01}; 
     unsigned char ResponseToPrepInsert[178] = {
         0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0xa9, 0x00, 0x00, 0x00, 0x04, 0x00,
@@ -82,7 +82,7 @@ void PrepExecStatement(PGconn *connPrepState, void* arg){
     PrepAndExecReq s_Thr_PrepAndExec;
 
     const char connection_string_host[] = "host = ";      //...destination_server.server_ip_address
-    const char connection_string_user[] = " user = postgres password = Gang-bang69";
+    const char connection_string_user[] = " user = postgres password = Gang-bang69";    //TODO is password usefull?
     PGconn* replic_connPrepState;
     PGresult* replic_resPrepState;
     replication_relation* replication_servers;
@@ -90,24 +90,26 @@ void PrepExecStatement(PGconn *connPrepState, void* arg){
     char replic_conninfoPrepState[65];
     int id_thr;
     bool bl_repl = false;
+
+    //Set Thread ID
     while(!mtx_getID.try_lock()){}
     id_thr = ID_Thread;
     ID_Thread++;
     mtx_getID.unlock();
 
-    //Not optimal but called once
+    //Set Thread ID into requests
     const char* idTh;
     idTh = (std::to_string(id_thr)).c_str();
     memcpy(&defaultINSERT[14], idTh, 1);
+    memcpy(&defaultINSERTsub[21], idTh, 1);
     command = defaultINSERT;
-    std::cout<<std::string(command)<<std::endl;
+    command_sub = defaultINSERTsub;
+
     if(arg != NULL){
         replication_servers = (replication_relation*)arg;
         // origin_server = replication_servers->publisher;
         id_thr = replication_servers->th_num;
-        //std::cout << "Serveur origine: " << origin_server.server_id << " | " << origin_server.server_ip_address << " | " << origin_server.server_name << std::endl;
         destination_server = replication_servers->subscriber;
-        //std::cout << "Serveur destination: " << destination_server.server_id << " | " << destination_server.server_ip_address << " | " << destination_server.server_name << std::endl;
 
         memcpy(&replic_conninfoPrepState[0], &connection_string_host[0], sizeof(connection_string_host) - 1);
         memcpy(&replic_conninfoPrepState[sizeof(connection_string_host) - 1], &(destination_server.server_ip_address.c_str())[0], destination_server.server_ip_address.length());
@@ -174,15 +176,12 @@ void PrepExecStatement(PGconn *connPrepState, void* arg){
                             memset(tableName, 0x00, sizeof(tableName));
                     }
                 }
-                else{
+                else
                     mtx_accessQueue.unlock();
-                }
             }
         }
-        else{
+        else
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
     }
     PQfinish(replic_connPrepState);
-
 }

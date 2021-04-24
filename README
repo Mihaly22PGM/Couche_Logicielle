@@ -41,5 +41,7 @@ Create environnement variables that will be used for libpq++. Refer to 734 page 
     source ~/.bash_profile
     test to log to postgresql with psql command, if logging, installatino ok
 If you need to check postgresql configuration, see https://github.com/jfcoz/postgresqltuner
+If cluster doesn't start, check encoding. Install US UTF8
+    sudo locale-gen en_US.UTF-8
 
 

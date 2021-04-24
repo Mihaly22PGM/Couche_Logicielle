@@ -1,37 +1,12 @@
-// #include <sys/socket.h>
-// #include <sys/un.h>
-// #include <netinet/in.h>
-// #include <arpa/inet.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <unistd.h>
-// #include <errno.h>
-// #include <sys/types.h>
-// #include <pthread.h>
-// #include <list>
-// #include <vector>
-// #include <queue>
-// #include <mutex>
-// #include <std::string.h>
+
 #include <algorithm>
 #include <fcntl.h>
-// #include <future>
 #include "c_Socket.hpp"
 #include "c_Logs.hpp"
 #include "c_PreparedStatements.hpp"
-#include "libpq-fe.h"
-
-//Debug libraries
-// #include <iostream>
-// #include <sys/stat.h>
-// #include <time.h>
-// #include <chrono>
-// #include <fstream>
-// #include <functional>       
+#include "libpq-fe.h"    
 #include <ifaddrs.h>
 
-// using namespace std;
-// using std::string;
 typedef int SOCKET;
 
 #define _NPOS std::string::npos
@@ -41,36 +16,16 @@ typedef int SOCKET;
 #define _EXECUTE_STATEMENT 0x0a
 #define _THREDS_EXEC_NUMBER 7
 
-#pragma region DeleteForProd
-// std::string const nomFichier("/home/tfe_rwcs/Couche_Logicielle/Request.log");
-// struct stat buffe;   
-// ofstream fichier(nomFichier.c_str());
-#pragma endregion DeleteForProd
-
 #pragma region Structures
 
-// struct Requests {
-//     char opcode[1];
-//     char stream[2];
-//     int size;
-//     char request[2048];    //TEST
-//     int origin; //0 = issu du serveur, 1 = issu de la redirection
-// };
 struct Requests {
     unsigned char opcode[1];
     unsigned char stream[2];
     int size;
-    unsigned char request[2048];    //TEST
-    int origin; //0 = issu du serveur, 1 = issu de la redirection
+    unsigned char request[2048];    
+    int origin; //Socket origin
 };
-// struct SQLRequests {
-//     char stream[2];
-//     char key_name[255];
-//     int pos_key;
-//     char key[255];
-//     std::string request;
-//     int origin; //0 = issu du serveur, 1 = issu de la redirection
-// };
+
 struct char_array{
    unsigned char chararray[131072];
 };
@@ -84,36 +39,30 @@ bool bl_Load = false;
 bool bl_Error_Args = false;
 bool bl_lastRequestFrame = false;
 bool bl_loop = true;
-const char* conninfo = "user = postgres";
+
 unsigned char buffData[131072];
 unsigned char header[13];
+unsigned char UseResponse[] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62 };     //Automatic response for USE requests
+unsigned char ResponseExecute[13] = {0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01};                                     //Prototype for Execute requests
 
 Requests s_Requests;
 
 std::queue<char_array> q_bufferFrames;
 std::list<Requests> l_bufferRequests;
-// std::list<SQLRequests> l_bufferPGSQLRequests;
-size_t /*from_sub_pos,*/ where_sub_pos, limit_sub_pos, /*set_sub_pos,*/ values_sub_pos = 0;
-// std::string select_clause, from_clause, where_clause, update_clause, set_clause, insert_into_clause, values_clause, delete_clause = "";
+size_t where_sub_pos, limit_sub_pos, values_sub_pos = 0;
 std::string where_clause, values_clause = "";
-std::string /*table,*/ key = "";
+std::string key = "";
 int pos_key = 0;
 std::string key_name = "";
-// std::string LowerRequest = "";
 std::string _incoming_cql_query = "";
-// std::vector<std::string> fields, values, columns;
+std::string usereq="";
 
+//Sockets - Expand to int 
 SOCKET sockServer;
 SOCKET sockDataClient;
-unsigned char UseResponse[] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62 };
-unsigned char ResponseExecute[13] = {0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01}; 
-int socket_for_client, client_connection;
-// unsigned char perm_double_zero[2] = { 0x00, 0x00 };
-// unsigned char perm_column_separator[2] = { 0x00, 0x0d };
-// unsigned char perm_column_value_separation[4] = { 0x00, 0x00, 0x00, 0x01 };
-// unsigned char perm_null_element[4] = { 0xff, 0xff, 0xff, 0xff };
+SOCKET socket_for_client, client_connection;
 
-//threads
+//Threads
 pthread_t th_FrameClient;
 pthread_t th_FrameData;
 pthread_t th_Requests;
@@ -121,41 +70,41 @@ pthread_t th_Redirecting;
 pthread_t th_INITSocket_Redirection;
 pthread_t th_PrepExec[_THREDS_EXEC_NUMBER];
 pthread_t th_Listening_socket;
+
+//Mutex
 std::mutex mtx_q_frames;
 std::mutex mtx_q_ReqActuServer;
 
+//PostgreSQL Variables
 PGconn* conn;
 PGresult* res;
+const char* conninfo = "user = postgres";
 
-int autoclose = 0;  //TO close prog after 30 secs
-//int server_count = 2;
 server actual_server;
 server subscriber_server;
 server neighbor_server_1;
 //server neighbor_server_2;
 server server_to_redirect;
 int port = 8042;
-std::queue<Requests> l_bufferRequestsForActualServer;    //CHANGED
+std::queue<Requests> l_bufferRequestsForActualServer;
 int socket_neighbor_1/*, socket_neighbor_2*/;
 
 std::vector<int> accepted_connections, connected_connections;
-//Liste des serveurs
-server server_A = { "RWCS_vServer1", 0, "192.168.82.55" };  //TODO change
-server server_B = { "RWCS_vServer2", 1, "192.168.82.59" };
-server server_C = { "RWCS_vServer3", 2, "192.168.82.64" };
+//Server List
+server server_A = { "RWCS_vServer1", 0, "192.168.82.52" };
+server server_B = { "RWCS_vServer2", 1, "192.168.82.53" };
+server server_C = { "RWCS_vServer3", 2, "192.168.82.55" };
 server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };
 
-//Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
-std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F*/ };
-const int server_count = l_servers.size();
+std::vector<server> l_servers = { server_A, server_B, server_C, server_D, server_E, server_F}; //Servers to use
+const int server_count = l_servers.size();  //6 servers
 
 #pragma endregion Global
 
 #pragma region Prototypes
-void TraitementFrameData(/*void**/unsigned char[131072]);
-//void* TraitementRequests(void*);
+void TraitementFrameData(unsigned char[131072]);
 void* INITSocket_Redirection(void*);
 void* redirecting(void*);
 void closeSockets();
@@ -179,6 +128,7 @@ std::vector<std::string> extract_select_data(std::string);
 std::vector<std::string> extract_set_data(std::string);
 #pragma endregion Prototypes
 
+//TODO Move this in Global Region if Possible
 unsigned int sommeSize = 0;
 bool bl_partialRequest = false;
 unsigned char partialRequest[2048];
@@ -187,7 +137,6 @@ int sizeheader=0;
 unsigned char test[131072];
 unsigned char frameData[131072];
 int autoIncrementRequest = 0;
-std::string usereq="";
 PrepAndExecReq s_PrepAndExec_ToSend;
 replication_relation actual_and_subscriber;
 int main(int argc, char* argv[])
@@ -272,34 +221,15 @@ int main(int argc, char* argv[])
     else
         logs("main() : Threads creation success");
     logs("main() : Starting Done");
-    initClock(std::chrono::high_resolution_clock::now());
-    timestamp("Starting Done", std::chrono::high_resolution_clock::now());
-    //char_array frameToSend;
+    //initClock(std::chrono::high_resolution_clock::now());
+    //timestamp("Starting Done", std::chrono::high_resolution_clock::now());
     ssize_t ServerSock=0;
     while (bl_loop) {
         ServerSock = 0;
         ServerSock = recv(sockDataClient, &buffData[0], sizeof(buffData), 0);
         if (ServerSock > 0) {
-            // if(ServerSock > 65000){
-            //     logs("Attention Billy ça va peter", WARNING);
-            //     //printf("%d\r\n", ServerSock);    
-            // }
             TraitementFrameData(buffData);
-            // timestamp("Received frame", std::chrono::high_resolution_clock::now());
-            // memcpy(&frameToSend.chararray[0], &buffData[0], sizeof(buffData));
-            // while (!mtx_q_frames.try_lock()){}
-            // q_bufferFrames.push(frameToSend);
-            // mtx_q_frames.unlock();
             memset(buffData, 0, sizeof(buffData));
-            // timestamp("Frame pushed", std::chrono::high_resolution_clock::now());
-            autoclose=0;
-        }
-        else{
-            autoclose++;
-            if(autoclose>30000000){    //TODO change this
-                bl_loop =false;
-            }
-            //std::this_thread::sleep_for(std::chrono::nanoseconds(10));  //DELETE?
         }
     }
     printf("Fermeture du programme...\r\n");
