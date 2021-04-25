@@ -601,7 +601,7 @@ void* INITSocket_Redirection(void* arg)
 
     listen(socket_for_client, 10);
 
-    while (accepted_connections.size() < server_count - 1)
+    while (static_cast<int>(accepted_connections.size()) < server_count - 1)
     {
         client_connection = accept(socket_for_client, (struct sockaddr*)NULL, NULL);
         fcntl(client_connection, F_SETFL, O_NONBLOCK);
@@ -614,7 +614,7 @@ void* INITSocket_Redirection(void* arg)
 
     while (1)
     {
-        for (int i = 0; i < accepted_connections.size(); i++)
+        for (int i = 0; i < static_cast<int>(accepted_connections.size()); i++)
         {
             if (recv(accepted_connections[i], buffer, sizeof(buffer), 0) > 0)
             {
@@ -633,6 +633,7 @@ void* INITSocket_Redirection(void* arg)
                     // mtx_q_frames.unlock();
                     sommeSize_REPL = 0;
                     bl_lastRequestFrame_REPL = false;
+                    std::cout << "TT VA BIEN0" << std::endl;
                     if (bl_partialRequest_REPL) {
                         if (partialHeader_REPL[4] == _EXECUTE_STATEMENT)
                             sizeheader_REPL = 9;
@@ -658,6 +659,7 @@ void* INITSocket_Redirection(void* arg)
                     else {
                         memcpy(&test_REPL[0], &frameData_REPL[0], sizeof(frameData_REPL));
                     }
+                    std::cout << "TT VA BIEN1" << std::endl;
                     while (!bl_lastRequestFrame_REPL && !bl_partialRequest_REPL) {
                         //autoIncrementRequest++;
                         // if(sommeSize_REPL>64450){
@@ -723,14 +725,14 @@ void* INITSocket_Redirection(void* arg)
                                 memcpy(s_PrepAndExec_ToSend_REPL.CQLStatement, s_Requests_REPL.request, sizeof(s_Requests_REPL.request));
                                 s_PrepAndExec_ToSend_REPL.origin = accepted_connections[i];
                                 AddToQueue(s_PrepAndExec_ToSend_REPL);
-                                /*std::cout << "s_Requests_REPL.size: " << std::endl;
+                                std::cout << "s_Requests_REPL.size: " << std::endl;
                                 std::cout << s_Requests_REPL.size << std::endl;
                                 std::cout << "s_PrepAndExec_ToSend_REPL.head: " << std::endl;
-                                for(int i = 0; i < sizeof(s_PrepAndExec_ToSend_REPL.head); i++)
+                                for (int i = 0; i < 13; i++)
                                     std::cout << s_PrepAndExec_ToSend_REPL.head[i];
                                 std::cout << " s_PrepAndExec_ToSend_REPL.CQLStatement: " << std::endl;
-                                for(int i = 0; i < sizeof(s_PrepAndExec_ToSend_REPL.CQLStatement); i++)
-                                    std::cout <<  s_PrepAndExec_ToSend_REPL.CQLStatement[i];*/
+                                for (int i = 0; i < 2048; i++)
+                                    std::cout << s_PrepAndExec_ToSend_REPL.CQLStatement[i];
                                 std::cout << "_EXECUTE_STATEMENT AddToQueue depuis INITSocket_Redirection" << std::endl;
                                 memset(s_PrepAndExec_ToSend_REPL.head, 0, sizeof(s_PrepAndExec_ToSend_REPL.head));
                                 memset(s_PrepAndExec_ToSend_REPL.CQLStatement, 0, sizeof(s_PrepAndExec_ToSend_REPL.CQLStatement));
@@ -793,6 +795,7 @@ void* INITSocket_Redirection(void* arg)
                         //     bl_lastRequestFrame=true;
                         // }
                     }//Fin de frame
+                    std::cout << "TT VA BIEN2" << std::endl;
                     memset(&test_REPL[0], 0x00, sizeof(test_REPL));
                     memset(&header_REPL[0], 0x00, sizeof(header_REPL));
                     // timestamp("Frame OK", std::chrono::high_resolution_clock::now());
@@ -896,7 +899,7 @@ int connect_to_server(server _server_to_connect, int _port_to_connect)
 void send_to_server(int _socketServer, unsigned char _stream_to_send[2], std::string _query_to_send)
 {
     unsigned char cql_query[13 + _query_to_send.length()];
-    unsigned char header_to_send[13] = { 0x04, 0x00, _stream_to_send[0], _stream_to_send[1], 0x07, 0x00, 0x00, (_query_to_send.length() + 21) / 256, _query_to_send.length() + 21, 0x00, 0x00, _query_to_send.length() / 256, _query_to_send.length() };
+    unsigned char header_to_send[13] = { 0x04, 0x00, _stream_to_send[0], _stream_to_send[1], 0x07, 0x00, 0x00, (unsigned char)((_query_to_send.length() + 21) / 256), (unsigned char)(_query_to_send.length() + 21), 0x00, 0x00, (unsigned char)(_query_to_send.length() / 256), (unsigned char)(_query_to_send.length()) };
 
     memcpy(cql_query, header_to_send, 13);
     memcpy(cql_query + 13, _query_to_send.c_str(), _query_to_send.length());
@@ -1093,7 +1096,7 @@ void* Listening_socket(void* arg)
     int length;
     while (1)
     {
-        for (int i = 0; i < connected_connections.size(); i++)
+        for (int i = 0; i < static_cast<int>(connected_connections.size()); i++)
         {
             if (recv(connected_connections[i], buffer, sizeof(buffer), 0) > 0)
             {

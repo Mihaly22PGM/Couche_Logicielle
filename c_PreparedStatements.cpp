@@ -95,7 +95,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
     server destination_server;
     char replic_conninfoPrepState[65];
     int id_thr;
-    bool bl_repl = false;
+    //bool bl_repl = false;
 
     //Set Thread ID
     while (!mtx_getID.try_lock()) {}
@@ -141,7 +141,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
             logs("ConnPGSQLPrepStatements() REPLIC: Secure search path error", ERROR);
         else
         {
-            bl_repl = true;
+            //bl_repl=true;
             logs("ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess");
         }
         PQclear(replic_resPrepState);
@@ -173,12 +173,12 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                         paramValues[0] = tableName;
                         //ADDED
                         paramValues_repl[0] = tableName;
-                        //std::cout<< "tableName: " << std::string(tableName)<<std::endl;
+                        std::cout << "tableName: " << std::string(tableName) << std::endl;
                         //ENDADDED
                         for (int i = 0; i < 10; i++) {
                             memcpy(&fieldDataExecute[i], &s_Thr_PrepAndExec.CQLStatement[cursor + 4], sizeof(fieldDataExecute[i]) + 2);
                             paramValues[i + 1] = fieldDataExecute[i];
-                            //std::cout<< "paramValues[i+1]: " << std::string(paramValues[i+1])<<std::endl;
+                            std::cout << "paramValues[i+1]: " << std::string(paramValues[i + 1]) << std::endl;
                             cursor += 104;
                         }
                         std::cout << std::string(command) << std::endl;
