@@ -15,6 +15,13 @@
 #include <sstream>
 #include "libpq-fe.h"
 #include "c_Logs.hpp"
+#include "c_Socket.hpp"
+
+#define _NPOS std::string::npos
+#define _OPTIONS_STATEMENT 0x05
+#define _QUERY_STATEMENT 0x07
+#define _PREPARE_STATEMENT 0x09
+#define _EXECUTE_STATEMENT 0x0a
 
 struct PreparedReqStock{
     char ID[16];

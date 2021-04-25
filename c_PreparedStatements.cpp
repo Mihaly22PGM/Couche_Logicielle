@@ -1,11 +1,12 @@
 #include "c_PreparedStatements.hpp"
-#include "c_Socket.hpp"
 
 #define _NPOS std::string::npos
 #define _PREPARE_STATEMENT 0x09
 #define _EXECUTE_STATEMENT 0x0a
 
-std::queue<PrepAndExecReq> q_PrepAndExecRequests;
+std::queue<PrepAndExecReq> q_PrepAndExecRequests;   //Threads Safe Queue
+
+//Mutex
 std::mutex mtx_accessQueue;
 std::mutex mtx_writeOrder;
 std::mutex mtx_writeClient;
@@ -33,7 +34,6 @@ void* ConnPGSQLPrepStatements(void* arg) {    //Create the threads that will rea
     else
         logs("ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess");
     PQclear(resPrepState);
-    printf("Yoloooooo\r\n");
     PrepExecStatement(connPrepState, arg);
 
     //At the end, closing
@@ -60,6 +60,7 @@ void PrepExecStatement(PGconn *connPrepState, void* arg){
     char defaultINSERT[] = "CALL insert_th0($1::varchar(24),$2::char(100),$3::char(100),$4::char(100),$5::char(100),$6::char(100),$7::char(100),$8::char(100),$9::char(100),$10::char(100),$11::char(100));";
     char defaultINSERTsub[] = "CALL sub_insert_sx_th0($1::varchar(24))";
     const char * paramValues[11];
+    const char * paramValues_repl[1];
     unsigned char ResponseToExecute[13] = {0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01}; 
     unsigned char ResponseToPrepInsert[178] = {
         0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0xa9, 0x00, 0x00, 0x00, 0x04, 0x00,
@@ -87,6 +88,7 @@ void PrepExecStatement(PGconn *connPrepState, void* arg){
     PGresult* replic_resPrepState;
     replication_relation* replication_servers;
     server destination_server;
+    server origin_server;
     char replic_conninfoPrepState[65];
     int id_thr;
     bool bl_repl = false;
@@ -97,17 +99,16 @@ void PrepExecStatement(PGconn *connPrepState, void* arg){
     ID_Thread++;
     mtx_getID.unlock();
 
-    //Set Thread ID into requests
+    //Set Thread ID into request
     const char* idTh;
     idTh = (std::to_string(id_thr)).c_str();
     memcpy(&defaultINSERT[14], idTh, 1);
-    memcpy(&defaultINSERTsub[21], idTh, 1);
     command = defaultINSERT;
-    command_sub = defaultINSERTsub;
 
     if(arg != NULL){
+        bl_repl = true;
         replication_servers = (replication_relation*)arg;
-        // origin_server = replication_servers->publisher;
+        origin_server = replication_servers->publisher;
         id_thr = replication_servers->th_num;
         destination_server = replication_servers->subscriber;
 
@@ -115,6 +116,12 @@ void PrepExecStatement(PGconn *connPrepState, void* arg){
         memcpy(&replic_conninfoPrepState[sizeof(connection_string_host) - 1], &(destination_server.server_ip_address.c_str())[0], destination_server.server_ip_address.length());
         memcpy(&replic_conninfoPrepState[sizeof(connection_string_host) - 1 + destination_server.server_ip_address.length()], &connection_string_user[0], sizeof(connection_string_user) - 1);
 
+        //Set ID Thread and ID server into request for subscriber
+        memcpy(&defaultINSERTsub[21], idTh, 1);
+        memcpy(&defaultINSERTsub[17], (std::to_string(origin_server.server_id)).c_str(), 1);
+        command_sub = defaultINSERTsub;
+
+        //Create connexion to subscriber
         replic_connPrepState = PQconnectdb(replic_conninfoPrepState);
         /* Check to see that the backend connection was successfully made */
         if (PQstatus(replic_connPrepState) != CONNECTION_OK)
@@ -153,7 +160,7 @@ void PrepExecStatement(PGconn *connPrepState, void* arg){
                                     break;
                             }
                             cursor = tableNameSize+27;
-                            paramValues[0] =  tableName;
+                            paramValues_repl[0] = paramValues[0] = tableName;
                             for(int i=0; i<10; i++){
                                 memcpy(&fieldDataExecute[i], &s_Thr_PrepAndExec.CQLStatement[cursor+4], sizeof(fieldDataExecute[i])+2);
                                 paramValues[i+1] = fieldDataExecute[i];
@@ -163,6 +170,13 @@ void PrepExecStatement(PGconn *connPrepState, void* arg){
                             if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
                             {
                                 PQclear(resCreateTable);
+                                if(bl_repl)
+                                {
+                                    resCreateTable = PQexecParams(replic_connPrepState, command_sub, 1, (const Oid*) NULL, paramValues_repl, NULL, NULL, 0);
+                                    if (PQresultStatus(resCreateTable) != PGRES_COMMAND_OK)
+                                        fprintf(stderr, "LISTEN command REPLIC failed: %s", PQerrorMessage(connPrepState));
+                                    PQclear(resCreateTable);
+                                }
                                 memcpy(&ResponseToExecute[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, &ResponseToExecute, 13);
                                 for(int i=0; i<10; i++)
