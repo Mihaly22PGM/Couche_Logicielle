@@ -31,33 +31,28 @@ struct SQLPrepRequests {
 struct PrepAndExecReq {
     unsigned char head[13];
     unsigned char CQLStatement[2048];
-    //ADDED
     int origin;
-    //ENDADDED
 };
 
-//MOVED
 struct server
 {
     std::string server_name;
     int server_id;
     std::string server_ip_address;
 };
-//MOVED
 
-//ADDED
 struct replication_relation     //ensemble de deux serveurs pour la réplication
 {
     server publisher;
     server subscriber;
+    //ADDED
+    int th_num;
+    //ENDADDED
 };
-//ENDADDED
 
 void* ConnPGSQLPrepStatements(void*);
 void AddToQueue(PrepAndExecReq);
-void PrepExecStatement(PGconn*);
-//ADDED
-void PrepExecStatement(PGconn*, PGconn*, server, server);
-//ENDADDED
+void PrepExecStatement(PGconn*, void* arg = NULL);      //CHANGED
+void PrepExecStatement(PGconn*, PGconn*, void* arg = NULL);         //CHANGED
 void Ending();
 #endif
