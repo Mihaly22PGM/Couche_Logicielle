@@ -142,4 +142,4 @@ DROP PROCEDURE IF EXISTS sub_insert_s6_th6;
 DROP DATABASE IF EXISTS postgres;
 CREATE DATABASE postgres;
 \connect postgres
-\set AUTOCOMMIT off
+\set AUTOCOMMIT on
