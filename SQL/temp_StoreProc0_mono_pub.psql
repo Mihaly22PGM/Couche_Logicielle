@@ -1,7 +1,5 @@
 CREATE PUBLICATION p_s0;
-
 CREATE SUBSCRIPTION s_s1 CONNECTION 'host=192.168.82.58' PUBLICATION p_s1;
-
 CREATE OR REPLACE PROCEDURE pub_insert(_tab_nam IN varchar(24), _f1 IN char(100), _f0 IN char(100), _f7 IN char(100), _f6 IN char(100), _f9 IN char(100), _f8 IN char(100), _f3 IN char(100), _f2 IN char(100), _f5 IN char(100), _f4 IN char(100))
 LANGUAGE plpgsql
 AS $myproc$
@@ -22,7 +20,6 @@ begin
 	_tab_nam,'field0', 'field1','field2','field3','field4','field5','field6','field7','field8','field9', _f0,_f1,_f2,_f3,_f4,_f5,_f6,_f7,_f8,_f9);
 end;
 $myproc$;
-
 CREATE OR REPLACE PROCEDURE sub_insert_s1(_tab_nam IN varchar(24))
 LANGUAGE plpgsql
 AS $myproc$
