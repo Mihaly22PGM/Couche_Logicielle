@@ -134,7 +134,7 @@ server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };
 //Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
 std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F*/ };
-const int server_count = l_servers.size();
+const unsigned int server_count = l_servers.size();
 
 #pragma endregion Global
 
@@ -203,7 +203,7 @@ int main(int argc, char* argv[])
         logs("main() : Starting Proxy...Standalone mode selected");
     if (bl_UseReplication) {
         server_identification();
-        actual_and_subscriber = { actual_server, subscriber_server, 0 };
+        actual_and_subscriber = { actual_server, subscriber_server/*, 0 */ };
         std::cout << "Serveur actual_server: " << actual_server.server_id << " | " << actual_server.server_ip_address << " | " << actual_server.server_name << std::endl;
         std::cout << "Serveur subscriber_server: " << subscriber_server.server_id << " | " << subscriber_server.server_ip_address << " | " << subscriber_server.server_name << std::endl;
         int b = 0;
@@ -218,7 +218,7 @@ int main(int argc, char* argv[])
         for (int i = 0; i < _THREDS_EXEC_NUMBER; i++) {
             // CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)bl_Load);
             if (bl_UseReplication) {
-                actual_and_subscriber.th_num = i;
+                // actual_and_subscriber.th_num = i;
                 CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)&actual_and_subscriber);
             }
             else
@@ -601,7 +601,7 @@ void* INITSocket_Redirection(void* arg)
 
     listen(socket_for_client, 10);
 
-    while (static_cast<int>(accepted_connections.size()) < server_count - 1)
+    while (accepted_connections.size() < server_count - 1)
     {
         client_connection = accept(socket_for_client, (struct sockaddr*)NULL, NULL);
         fcntl(client_connection, F_SETFL, O_NONBLOCK);
@@ -614,7 +614,7 @@ void* INITSocket_Redirection(void* arg)
 
     while (1)
     {
-        for (int i = 0; i < static_cast<int>(accepted_connections.size()); i++)
+        for (unsigned int i = 0; i < accepted_connections.size(); i++)
         {
             if (recv(accepted_connections[i], buffer, sizeof(buffer), 0) > 0)
             {
@@ -633,7 +633,6 @@ void* INITSocket_Redirection(void* arg)
                     // mtx_q_frames.unlock();
                     sommeSize_REPL = 0;
                     bl_lastRequestFrame_REPL = false;
-                    std::cout << "TT VA BIEN0" << std::endl;
                     if (bl_partialRequest_REPL) {
                         if (partialHeader_REPL[4] == _EXECUTE_STATEMENT)
                             sizeheader_REPL = 9;
@@ -659,7 +658,7 @@ void* INITSocket_Redirection(void* arg)
                     else {
                         memcpy(&test_REPL[0], &frameData_REPL[0], sizeof(frameData_REPL));
                     }
-                    std::cout << "TT VA BIEN1" << std::endl;
+                    std::cout << "TT VA BIEN0" << std::endl;
                     while (!bl_lastRequestFrame_REPL && !bl_partialRequest_REPL) {
                         //autoIncrementRequest++;
                         // if(sommeSize_REPL>64450){
@@ -677,13 +676,14 @@ void* INITSocket_Redirection(void* arg)
                         }
                         else {
                             s_Requests_REPL.size = (unsigned int)header_REPL[7] * 256 + (unsigned int)header_REPL[8];
-                            memcpy(s_Requests_REPL.request, &test_REPL[13 + sommeSize_REPL], s_Requests_REPL.size);
-                            sommeSize_REPL += s_Requests_REPL.size + 13;
+                            memcpy(s_Requests_REPL.request, &test_REPL[9 + sommeSize_REPL], s_Requests_REPL.size);
+                            sommeSize_REPL += s_Requests_REPL.size + 9;
                         }
                         if (test_REPL[sommeSize_REPL - 1] == 0x00 && test_REPL[sommeSize_REPL - 2] == 0x00 && test_REPL[sommeSize_REPL - 3] == 0x00) {          //Checking for partial request
                             bl_partialRequest_REPL = true;
                             //autoIncrementRequest--;
                         }
+                        std::cout << "TT VA BIEN1" << std::endl;
                         if (!bl_partialRequest_REPL) {
                             switch (s_Requests_REPL.opcode[0])
                             {
@@ -911,21 +911,21 @@ void send_to_server(int _socketServer, unsigned char _stream_to_send[2], std::st
 void send_to_server(int _socketServer, unsigned char _head[13], unsigned char _CQLStatement[2048])
 {
     int size = (unsigned int)_head[7] * 256 + (unsigned int)_head[8];
-    //std::cout << "SIZE 7/8 at send: " << size << std::endl;
-    unsigned char cql_query[13 + size];
+    std::cout << "SIZE 7/8 at send: " << size << std::endl;
+    unsigned char cql_query[9 + size];
     memset(cql_query, 0, sizeof(cql_query));
 
-    memcpy(cql_query, _head, 13);
-    memcpy(cql_query + 13, _CQLStatement, size);
+    memcpy(cql_query, _head, 9);
+    memcpy(cql_query + 9, _CQLStatement, size);
 
     write(_socketServer, cql_query, sizeof(cql_query));
 
-    /*std::cout << "_PrepAndExecReq.head: " << std::endl;
-    for(int i = 0; i < 13; i++)
+    std::cout << "_PrepAndExecReq.head: " << std::endl;
+    for (int i = 0; i < 9; i++)
         std::cout << cql_query[i];
     std::cout << " _PrepAndExecReq.CQLStatement: " << std::endl;
-    for(int i = 0; i < size; i++)
-        std::cout <<  cql_query[13 + i];*/
+    for (int i = 0; i < size; i++)
+        std::cout << cql_query[9 + i];
     std::cout << std::endl << "PrepAndExecReq write depuis BENCH_redirecting" << std::endl;
 }
 #pragma endregion Server_connection
@@ -1096,7 +1096,7 @@ void* Listening_socket(void* arg)
     int length;
     while (1)
     {
-        for (int i = 0; i < static_cast<int>(connected_connections.size()); i++)
+        for (unsigned int i = 0; i < connected_connections.size(); i++)
         {
             if (recv(connected_connections[i], buffer, sizeof(buffer), 0) > 0)
             {

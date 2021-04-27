@@ -46,7 +46,7 @@ struct replication_relation     //ensemble de deux serveurs pour la réplication
     server publisher;
     server subscriber;
     //ADDED
-    int th_num;
+    // int th_num;
     //ENDADDED
 };
 
