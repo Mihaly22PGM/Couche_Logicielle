@@ -1,0 +1,50 @@
+Wed Apr 28 20:19:34 2021 : [INFO] main() : Starting Proxy...Replication mode selected
+Wed Apr 28 20:19:34 2021 : [INFO] main() : Thread th_INITSocket_Redirection created
+Wed Apr 28 20:19:45 2021 : [INFO] connect_to_server() : Connexion établie avec 192.168.82.64
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:19:46 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:20:13 2021 : [INFO] main() : Threads creation success
+Wed Apr 28 20:20:13 2021 : [INFO] main() : Starting Done
+Wed Apr 28 20:20:13 2021 : [WARNING] Partial request
+Wed Apr 28 20:20:13 2021 : [WARNING] Partial request
+Wed Apr 28 20:20:13 2021 : [WARNING] Partial request
+Wed Apr 28 20:20:13 2021 : [WARNING] Partial request
+Wed Apr 28 20:20:13 2021 : [WARNING] Partial request
+Wed Apr 28 20:20:13 2021 : [WARNING] Partial request
+Wed Apr 28 20:20:13 2021 : [WARNING] Partial request
+Wed Apr 28 20:20:13 2021 : [WARNING] Partial request
+Wed Apr 28 20:22:41 2021 : [INFO] main() : Starting Proxy...Replication mode selected
+Wed Apr 28 20:22:41 2021 : [INFO] main() : Thread th_INITSocket_Redirection created
+Wed Apr 28 20:22:53 2021 : [INFO] connect_to_server() : Connexion établie avec 192.168.82.64
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:22:54 2021 : [INFO] ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess
+Wed Apr 28 20:23:19 2021 : [INFO] main() : Threads creation success
+Wed Apr 28 20:23:19 2021 : [INFO] main() : Starting Done
+Wed Apr 28 20:23:19 2021 : [WARNING] Partial request
+Wed Apr 28 20:23:19 2021 : [WARNING] Partial request
+Wed Apr 28 20:23:19 2021 : [WARNING] Partial request
+Wed Apr 28 20:23:19 2021 : [WARNING] Partial request
+Wed Apr 28 20:23:19 2021 : [WARNING] Partial request
+Wed Apr 28 20:23:19 2021 : [WARNING] Partial request
+Wed Apr 28 20:23:19 2021 : [WARNING] Partial request
+Wed Apr 28 20:23:19 2021 : [WARNING] Partial request

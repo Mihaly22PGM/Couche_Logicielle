@@ -13,7 +13,7 @@ typedef int SOCKET;
 #define _QUERY_STATEMENT 0x07
 #define _PREPARE_STATEMENT 0x09
 #define _EXECUTE_STATEMENT 0x0a
-#define _THREDS_EXEC_NUMBER 7
+#define _THREDS_EXEC_NUMBER 6
 
 #pragma region Structures
 
@@ -126,14 +126,14 @@ server server_C = { "RWCS-vServer3", 2, "192.168.82.63" };
 server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };*/
-server server_A = { "RWCS_vServer4", 0, "192.168.82.56" };
-server server_B = { "RWCS_vServer5", 1, "192.168.82.58" };
+server server_A = { "RWCS_vServer4", 0, "192.168.82.63" };
+server server_B = { "RWCS_vServer5", 1, "192.168.82.64" };
 server server_C = { "RWCS_vServer3", 2, "192.168.82.64" };
 server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
-server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
-server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };
+server server_E = { "RWCS_vServer5", 4, "192.168.82.63" };
+server server_F = { "RWCS_vServer6", 5, "192.168.82.64" };
 //Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
-std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F*/ };
+std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F */};
 const unsigned int server_count = l_servers.size();
 
 #pragma endregion Global
@@ -365,7 +365,7 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                     if (s_Requests.request[0] == 'U' && s_Requests.request[1] == 'S' && s_Requests.request[2] == 'E') {
                         // usereq = std::string((char*)s_Requests.request);
                         // if(usereq.substr(0,3) == "USE"){
-                        printf("USE\r\n");
+                        //printf("USE\r\n");
                         memcpy(&UseResponse[2], &s_Requests.stream, 2);
                         write(sockDataClient, UseResponse, sizeof(UseResponse));
                         // }
@@ -391,11 +391,11 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                     s_PrepAndExec_ToSend.origin = sockDataClient;
                     if (bl_UseReplication) {
                         BENCH_redirecting(s_PrepAndExec_ToSend);
-                        std::cout << "_EXECUTE_STATEMENT envoye a BENCH_redirecting depuis le client" << std::endl;
+                  //      std::cout << "_EXECUTE_STATEMENT envoye a BENCH_redirecting depuis le client" << std::endl;
                     }
                     else {
                         AddToQueue(s_PrepAndExec_ToSend);
-                        std::cout << "_EXECUTE_STATEMENT AddToQueue depuis le client" << std::endl;
+                    //    std::cout << "_EXECUTE_STATEMENT AddToQueue depuis le client" << std::endl;
                     }
                     memset(s_PrepAndExec_ToSend.head, 0, sizeof(s_PrepAndExec_ToSend.head));
                     memset(s_PrepAndExec_ToSend.CQLStatement, 0, sizeof(s_PrepAndExec_ToSend.CQLStatement));
@@ -409,7 +409,7 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                     memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
                     s_PrepAndExec_ToSend.origin = sockDataClient;
                     AddToQueue(s_PrepAndExec_ToSend);
-                    std::cout << "_PREPARE_STATEMENT AddToQueue depuis le client" << std::endl;
+                    //std::cout << "_PREPARE_STATEMENT AddToQueue depuis le client" << std::endl;
                     break;
                 case _OPTIONS_STATEMENT:
                     logs("DO THIS FUCKING ISALIVE REQUEST FRANZICHE", WARNING);
@@ -619,7 +619,7 @@ void* INITSocket_Redirection(void* arg)
             if (recv(accepted_connections[i], buffer, sizeof(buffer), 0) > 0)
             {
                 try {
-                    std::cout << "_PrepAndExecReq reçue dans INITSocket_Redirection" << std::endl;
+                    //std::cout << "_PrepAndExecReq reçue dans INITSocket_Redirection" << std::endl;
                     memset(&test_REPL[0], 0, sizeof(test_REPL));
                     memset(&header_REPL[0], 0, sizeof(header_REPL));
                     //while (bl_loop) {
@@ -658,7 +658,7 @@ void* INITSocket_Redirection(void* arg)
                     else {
                         memcpy(&test_REPL[0], &frameData_REPL[0], sizeof(frameData_REPL));
                     }
-                    std::cout << "TT VA BIEN0" << std::endl;
+                    //std::cout << "TT VA BIEN0" << std::endl;
                     while (!bl_lastRequestFrame_REPL && !bl_partialRequest_REPL) {
                         //autoIncrementRequest++;
                         // if(sommeSize_REPL>64450){
@@ -683,7 +683,7 @@ void* INITSocket_Redirection(void* arg)
                             bl_partialRequest_REPL = true;
                             //autoIncrementRequest--;
                         }
-                        std::cout << "TT VA BIEN1" << std::endl;
+                        //std::cout << "TT VA BIEN1" << std::endl;
                         if (!bl_partialRequest_REPL) {
                             switch (s_Requests_REPL.opcode[0])
                             {
@@ -700,7 +700,7 @@ void* INITSocket_Redirection(void* arg)
                                 if (s_Requests_REPL.request[0] == 'U' && s_Requests_REPL.request[1] == 'S' && s_Requests_REPL.request[2] == 'E') {
                                     // usereq = std::string((char*)s_Requests_REPL.request);
                                     // if(usereq.substr(0,3) == "USE"){
-                                    printf("USE\r\n");
+                                    //printf("USE\r\n");
                                     memcpy(&UseResponse_REPL[2], &s_Requests_REPL.stream, 2);
                                     write(accepted_connections[i], UseResponse_REPL, sizeof(UseResponse_REPL));
                                     // }
@@ -725,15 +725,15 @@ void* INITSocket_Redirection(void* arg)
                                 memcpy(s_PrepAndExec_ToSend_REPL.CQLStatement, s_Requests_REPL.request, sizeof(s_Requests_REPL.request));
                                 s_PrepAndExec_ToSend_REPL.origin = accepted_connections[i];
                                 AddToQueue(s_PrepAndExec_ToSend_REPL);
-                                std::cout << "s_Requests_REPL.size: " << std::endl;
-                                std::cout << s_Requests_REPL.size << std::endl;
-                                std::cout << "s_PrepAndExec_ToSend_REPL.head: " << std::endl;
-                                for (int i = 0; i < 13; i++)
-                                    std::cout << s_PrepAndExec_ToSend_REPL.head[i];
-                                std::cout << " s_PrepAndExec_ToSend_REPL.CQLStatement: " << std::endl;
-                                for (int i = 0; i < 2048; i++)
-                                    std::cout << s_PrepAndExec_ToSend_REPL.CQLStatement[i];
-                                std::cout << "_EXECUTE_STATEMENT AddToQueue depuis INITSocket_Redirection" << std::endl;
+                                //std::cout << "s_Requests_REPL.size: " << std::endl;
+                                //std::cout << s_Requests_REPL.size << std::endl;
+                                //std::cout << "s_PrepAndExec_ToSend_REPL.head: " << std::endl;
+                                //for (int i = 0; i < 13; i++)
+                                 //   std::cout << s_PrepAndExec_ToSend_REPL.head[i];
+                                //std::cout << " s_PrepAndExec_ToSend_REPL.CQLStatement: " << std::endl;
+                                //for (int i = 0; i < 2048; i++)
+                                //    std::cout << s_PrepAndExec_ToSend_REPL.CQLStatement[i];
+                                //std::cout << "_EXECUTE_STATEMENT AddToQueue depuis INITSocket_Redirection" << std::endl;
                                 memset(s_PrepAndExec_ToSend_REPL.head, 0, sizeof(s_PrepAndExec_ToSend_REPL.head));
                                 memset(s_PrepAndExec_ToSend_REPL.CQLStatement, 0, sizeof(s_PrepAndExec_ToSend_REPL.CQLStatement));
                                 if (test_REPL[sommeSize_REPL] != 0x04)        //Checking last frame
@@ -745,7 +745,7 @@ void* INITSocket_Redirection(void* arg)
                                 memcpy(s_PrepAndExec_ToSend_REPL.head, header_REPL, sizeof(header_REPL));
                                 memcpy(s_PrepAndExec_ToSend_REPL.CQLStatement, s_Requests_REPL.request, sizeof(s_Requests_REPL.request));
                                 s_PrepAndExec_ToSend_REPL.origin = accepted_connections[i];
-                                std::cout << "_PREPARE_STATEMENT AddToQueue depuis INITSocket_Redirection" << std::endl;
+                                //std::cout << "_PREPARE_STATEMENT AddToQueue depuis INITSocket_Redirection" << std::endl;
                                 AddToQueue(s_PrepAndExec_ToSend_REPL);
                                 break;
                             case _OPTIONS_STATEMENT:
@@ -770,18 +770,18 @@ void* INITSocket_Redirection(void* arg)
                                 //                                             printf("\r\n");
 
                                 if (s_Requests_REPL.request[91] == 0x13 || s_Requests_REPL.request[91] == 0x88 || s_Requests_REPL.request[92] == 0x05 || s_Requests_REPL.request[101] == 0xc0) {
-                                    printf("Mouais\r\n");
+                                    //printf("Mouais\r\n");
                                     bl_partialRequest_REPL = false;
                                     memcpy(&ResponseExecute_REPL[2], &s_Requests_REPL.stream[0], 2);
                                     write(GetSocket(), ResponseExecute_REPL, sizeof(ResponseExecute_REPL));
-                                    for (int i = 50; i < 150; i++) {
+                                    /*for (int i = 50; i < 150; i++) {
                                         printf("0x%x ", s_Requests_REPL.request[i]);
                                     }
-                                    printf("\r\n");
+                                    printf("\r\n");*/
                                 }
                             }
                             if (bl_partialRequest_REPL) {
-                                logs("Partial request", WARNING);
+                                //logs("Partial request", WARNING);
                                 memset(partialRequest_REPL, 0, sizeof(partialRequest_REPL));
                                 memset(partialHeader_REPL, 0, sizeof(partialHeader_REPL));
                                 memcpy(&partialRequest_REPL[0], &s_Requests_REPL.request[0], sizeof(partialRequest_REPL));
@@ -795,7 +795,7 @@ void* INITSocket_Redirection(void* arg)
                         //     bl_lastRequestFrame=true;
                         // }
                     }//Fin de frame
-                    std::cout << "TT VA BIEN2" << std::endl;
+                    //std::cout << "TT VA BIEN2" << std::endl;
                     memset(&test_REPL[0], 0x00, sizeof(test_REPL));
                     memset(&header_REPL[0], 0x00, sizeof(header_REPL));
                     // timestamp("Frame OK", std::chrono::high_resolution_clock::now());
@@ -905,13 +905,13 @@ void send_to_server(int _socketServer, unsigned char _stream_to_send[2], std::st
     memcpy(cql_query + 13, _query_to_send.c_str(), _query_to_send.length());
 
     write(_socketServer, cql_query, 13 + _query_to_send.length());
-    std::cout << std::endl << "Incoming query sent" << std::endl;
+    //std::cout << std::endl << "Incoming query sent" << std::endl;
 }
 
 void send_to_server(int _socketServer, unsigned char _head[13], unsigned char _CQLStatement[2048])
 {
     int size = (unsigned int)_head[7] * 256 + (unsigned int)_head[8];
-    std::cout << "SIZE 7/8 at send: " << size << std::endl;
+    //std::cout << "SIZE 7/8 at send: " << size << std::endl;
     unsigned char cql_query[9 + size];
     memset(cql_query, 0, sizeof(cql_query));
 
@@ -920,13 +920,13 @@ void send_to_server(int _socketServer, unsigned char _head[13], unsigned char _C
 
     write(_socketServer, cql_query, sizeof(cql_query));
 
-    std::cout << "_PrepAndExecReq.head: " << std::endl;
-    for (int i = 0; i < 9; i++)
-        std::cout << cql_query[i];
-    std::cout << " _PrepAndExecReq.CQLStatement: " << std::endl;
-    for (int i = 0; i < size; i++)
-        std::cout << cql_query[9 + i];
-    std::cout << std::endl << "PrepAndExecReq write depuis BENCH_redirecting" << std::endl;
+    //std::cout << "_PrepAndExecReq.head: " << std::endl;
+    //for (int i = 0; i < 9; i++)
+      //  std::cout << cql_query[i];
+    //std::cout << " _PrepAndExecReq.CQLStatement: " << std::endl;
+    //for (int i = 0; i < size; i++)
+      //  std::cout << cql_query[9 + i];
+    //std::cout << std::endl << "PrepAndExecReq write depuis BENCH_redirecting" << std::endl;
 }
 #pragma endregion Server_connection
 
@@ -944,17 +944,17 @@ void* redirecting(void* arg)
             memcpy(req.stream, l_bufferRequests.back().stream, 2);
             memcpy(req.opcode, l_bufferRequests.back().opcode, 1);
             l_bufferRequests.pop_back();
-            std::cout << "redirecting() pop back ok" << std::endl;
+            //std::cout << "redirecting() pop back ok" << std::endl;
 
             std::string key_from_cql_query = key_extractor(tempReq);
 
             //On hash la clé extraite de la requête via la fonction string_Hashing()
             int hashed_key = string_Hashing(key_from_cql_query);
-            std::cout << hashed_key << std::endl;
+            //std::cout << hashed_key << std::endl;
 
             //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
             int range_id = hashed_key % server_count;
-            std::cout << range_id << std::endl;
+//            std::cout << range_id << std::endl;
 
             //On détermine le serveur vers lequel rediriger
             if (range_id == server_A.server_id)
@@ -985,7 +985,7 @@ void* redirecting(void* arg)
             if (server_to_redirect.server_id != actual_server.server_id)
             {
                 //Redirection
-                std::cout << "Requete a rediriger vers " << server_to_redirect.server_name << std::endl;
+                //std::cout << "Requete a rediriger vers " << server_to_redirect.server_name << std::endl;
                 if (server_to_redirect.server_id > actual_server.server_id)
                     send_to_server(connected_connections[server_to_redirect.server_id - 1], req.stream, tempReq);
                 else
@@ -994,7 +994,7 @@ void* redirecting(void* arg)
             else
             {
                 //Envoi vers PostgreSQL
-                std::cout << "Requete a envoyer vers PostgreSQL" << std::endl;
+                //std::cout << "Requete a envoyer vers PostgreSQL" << std::endl;
                 memcpy(req.request, tempReq.c_str(), tempReq.length());
                 l_bufferRequestsForActualServer.push(req);
             }
@@ -1038,7 +1038,7 @@ std::string key_extractor(std::string _incoming_cql_query)
 
         //On extrait, affiche et retourne la clé
         key = extract_where_data(where_clause);
-        std::cout << "Extracted Key: " << key << std::endl;
+        //std::cout << "Extracted Key: " << key << std::endl;
 
         return key;
     }
@@ -1052,7 +1052,7 @@ std::string key_extractor(std::string _incoming_cql_query)
 
         //On extrait, affiche et retourne la clé
         key = extract_where_data(where_clause);
-        std::cout << "Extracted Key: " << key << std::endl;
+        //std::cout << "Extracted Key: " << key << std::endl;
 
         return key;
     }
@@ -1066,7 +1066,7 @@ std::string key_extractor(std::string _incoming_cql_query)
 
         //On extrait, affiche et retourne la clé
         key = extract_values_data(values_clause)[0];
-        std::cout << "Extracted Key: " << key << std::endl;
+        //std::cout << "Extracted Key: " << key << std::endl;
 
         return key;
     }
@@ -1080,7 +1080,7 @@ std::string key_extractor(std::string _incoming_cql_query)
 
         //On extrait, affiche et retourne la clé
         key = extract_where_data(where_clause);
-        std::cout << "Extracted Key: " << key << std::endl;
+        //std::cout << "Extracted Key: " << key << std::endl;
 
         return key;
     }
@@ -1092,7 +1092,7 @@ std::string key_extractor(std::string _incoming_cql_query)
 
 void* Listening_socket(void* arg)
 {
-    char buffer[1024];
+    char buffer[10240];
     int length;
     while (1)
     {
@@ -1100,13 +1100,19 @@ void* Listening_socket(void* arg)
         {
             if (recv(connected_connections[i], buffer, sizeof(buffer), 0) > 0)
             {
-                length = (buffer[7] * 256) + buffer[8] + 9;
-                unsigned char u_buffer[length];
-                memcpy(u_buffer, buffer, length);
-                write(sockDataClient, u_buffer, sizeof(u_buffer));
-                std::cout << "Recu d'un autre serveur et envoye a sockDataClient" << std::endl;
+                //length = (buffer[7] * 256) + buffer[8] + 9;
+                //unsigned char u_buffer[length];
+                //memcpy(u_buffer, buffer, length);
+                //timestamp("", )
+                for(int j = 0; j<sizeof(buffer); j++){
+                  printf("%c", buffer[j]);
+                }
+                printf("\r\n");
+                write(sockDataClient, buffer, sizeof(buffer));
+                
+               // std::cout << "Recu d'un autre serveur et envoye a sockDataClient" << std::endl;
 
-                memset(buffer, 0, 1024);
+                memset(buffer, 0, 10240);
                 length = 0;
             }
         }
@@ -1166,7 +1172,7 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
     if (server_to_redirect.server_id != actual_server.server_id)
     {
         //Redirection
-        std::cout << "_PrepAndExecReq a rediriger vers " << server_to_redirect.server_name << std::endl;
+        //std::cout << "_PrepAndExecReq a rediriger vers " << server_to_redirect.server_name << std::endl;
         if (server_to_redirect.server_id > actual_server.server_id)
             send_to_server(connected_connections[server_to_redirect.server_id - 1], _PrepAndExecReq.head, _PrepAndExecReq.CQLStatement);
         else
@@ -1175,7 +1181,7 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
     else
     {
         AddToQueue(_PrepAndExecReq);
-        std::cout << "_PrepAndExecReq AddToQueue  depuis BENCH_redirecting" << std::endl;
+        //std::cout << "_PrepAndExecReq AddToQueue  depuis BENCH_redirecting" << std::endl;
         /*int size = (unsigned int)_PrepAndExecReq.head[7] * 256 + (unsigned int)_PrepAndExecReq.head[8];
         cout << "SIZE 7/8 before send: " << size << endl;
         cout << "_PrepAndExecReq.head: " << endl;
