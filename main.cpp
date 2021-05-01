@@ -13,7 +13,7 @@ typedef int SOCKET;
 #define _QUERY_STATEMENT 0x07
 #define _PREPARE_STATEMENT 0x09
 #define _EXECUTE_STATEMENT 0x0a
-#define _THREDS_EXEC_NUMBER 6
+#define _THREDS_EXEC_NUMBER 4
 #define _REDIRECTING_PORT 8042
 
 #pragma region Structures
@@ -1098,39 +1098,27 @@ int string_Hashing(std::string _key_from_cql_query)
 void* Listening_socket(void* arg)
 {
     char buffer[10240];
-    //ADDED
-    // int bytes_received;
-    //ENDADDED
-    int length = 0;
+    int bytes_received;
+    // unsigned int length = 0;
     while (bl_loop)
     {
         for (unsigned int i = 0; i < connected_connections.size(); i++)
         {
-            if (/*bytes_received =*/ recv(connected_connections[i], buffer, sizeof(buffer), 0) > 0)
+            bytes_received = recv(connected_connections[i], buffer, sizeof(buffer), 0);
+            if (bytes_received > 0)
             {
-                //std::cout<<"bytes_received: "<<bytes_received<<std::endl;
-                //ADDED
-                while (bl_loop)
+                /*while(bl_loop)
                 {
-                    length += (buffer[7 + length] * 256) + buffer[8 + length] + 9;
-                    if (buffer[length] == 0x00)
+                    length += (buffer[7+length] * 256) + buffer[8+length] + 9;
+                    if(length> sizeof(buffer)-1 || buffer[length] == 0x00)
                         break;
-                }
-                //ENDADDED
-
-                //unsigned char u_buffer[length];
-                //memcpy(u_buffer, buffer, length);
-                //timestamp("", )
-                /*for(int j = 0; j<sizeof(buffer); j++){
-                  printf("%c", buffer[j]);
-                }
-                printf("\r\n");*/
-                write(sockDataClient, buffer, length);
+                }*/
+                write(sockDataClient, buffer, /*length*/bytes_received);
 
                 // std::cout << "Recu d'un autre serveur et envoye a sockDataClient" << std::endl;
 
-                memset(buffer, 0, 10240);
-                length = 0;
+                memset(buffer, 0, bytes_received);
+                // length = 0;
             }
         }
     }

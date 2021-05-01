@@ -4,15 +4,16 @@
 // #define _NPOS std::string::npos
 #define _PREPARE_STATEMENT 0x09
 #define _EXECUTE_STATEMENT 0x0a
+#define _ITER_FOR_PUB_REFRESH 50
 
 std::queue<PrepAndExecReq> q_PrepAndExecRequests;
 std::mutex mtx_accessQueue;
 // std::mutex mtx_writeOrder;
 // std::mutex mtx_writeClient;
-// std::mutex mtx_getID;
+std::mutex mtx_getID;
 
 bool bl_continueThread = true;
-// int ID_Thread=0;
+int ID_Thread = 0;
 
 void* ConnPGSQLPrepStatements(void* arg) {    //Create the threads that will read the prepared statements requests
     //Definitions
@@ -62,7 +63,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
     const char* command_sub;
     char defaultINSERT[] = "CALL pub_insert($1::varchar(24),$2::char(100),$3::char(100),$4::char(100),$5::char(100),$6::char(100),$7::char(100),$8::char(100),$9::char(100),$10::char(100),$11::char(100));";
     char defaultINSERTsub[] = "CALL sub_insert_sx($1::varchar(24));";
-
+    char defaultREFRESHpub[] = "ALTER SUBSCRIPTION s_sx REFRESH PUBLICATION;";
     const char* paramValues[11];
     //ADDED
     const char* paramValues_repl[1];
@@ -210,14 +211,18 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
 
     //REPLICATION FACTOR
 
-    // int id_thr;
+    int id_thr;
+    int iter_refreshPub = 0;
+    bool bl_firstThread = false;
     // bool bl_repl = false;
 
     //Set Thread ID
-    // while(!mtx_getID.try_lock()){}
-    // id_thr = ID_Thread;
-    // ID_Thread++;
-    // mtx_getID.unlock();
+    while (!mtx_getID.try_lock()) {}
+    id_thr = ID_Thread;
+    ID_Thread++;
+    mtx_getID.unlock();
+    if (id_thr == 0)
+        bl_firstThread = true;
 
     //Set Thread ID into requests
     // const char* idTh;
@@ -241,6 +246,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
         // memcpy(&defaultINSERTsub[21], idTh, 1);
         //ADDED
         memcpy(&defaultINSERTsub[17], (std::to_string(origin_server.server_id)).c_str(), 1);
+        memcpy(&defaultREFRESHpub[22], (std::to_string(origin_server.server_id)).c_str(), 1);
         //ENDADDED
         command_sub = defaultINSERTsub;
         //ENDMOVED
@@ -332,6 +338,19 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                             memset(&fieldDataExecute[i], 0x00, sizeof(fieldDataExecute[i]));
                         //ENDMOVED
                         memset(tableName, 0x00, sizeof(tableName));
+                    }
+                    if (bl_firstThread) {
+                        iter_refreshPub++;
+                        if (iter_refreshPub > _ITER_FOR_PUB_REFRESH) {
+                            while (!mtx_accessQueue.try_lock()) {}
+                            resCreateTable = PQexec(replic_connPrepState, defaultREFRESHpub);
+                            if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
+                                iter_refreshPub = 0;
+                            else
+                                fprintf(stderr, "REFRESH command REPLIC failed: %s", PQerrorMessage(replic_connPrepState));
+                            PQclear(resCreateTable);
+                            mtx_accessQueue.unlock();
+                        }
                     }
                 }
                 else
