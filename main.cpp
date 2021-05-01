@@ -14,6 +14,7 @@ typedef int SOCKET;
 #define _PREPARE_STATEMENT 0x09
 #define _EXECUTE_STATEMENT 0x0a
 #define _THREDS_EXEC_NUMBER 6
+#define _REDIRECTING_PORT 8042
 
 #pragma region Structures
 
@@ -76,15 +77,15 @@ unsigned char ResponseExecute_REPL[13] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0
 
 replication_relation actual_and_subscriber;
 
-std::queue<char_array> q_bufferFrames;
-std::list<Requests> l_bufferRequests;
-size_t where_sub_pos, limit_sub_pos, values_sub_pos = 0;
-std::string where_clause, values_clause = "";
-std::string key = "";
-int pos_key = 0;
-std::string key_name = "";
-std::string _incoming_cql_query = "";
-std::string usereq = "";
+// std::queue<char_array> q_bufferFrames;
+// std::list<Requests> l_bufferRequests;
+// size_t where_sub_pos, limit_sub_pos, values_sub_pos = 0;
+// std::string where_clause, values_clause = "";
+// std::string key = "";
+// int pos_key = 0;
+// std::string key_name = "";
+// std::string _incoming_cql_query = "";
+// std::string usereq = "";
 
 //Sockets - Expand to int 
 SOCKET sockServer;
@@ -93,30 +94,29 @@ SOCKET socket_for_client, client_connection;
 
 //Threads
 pthread_t th_FrameClient;
-pthread_t th_FrameData;
-pthread_t th_Requests;
-pthread_t th_Redirecting;
+// pthread_t th_FrameData;
+// pthread_t th_Requests;
+// pthread_t th_Redirecting;
 pthread_t th_INITSocket_Redirection;
 pthread_t th_PrepExec[_THREDS_EXEC_NUMBER];
 pthread_t th_Listening_socket;
 
 //Mutex
-std::mutex mtx_q_frames;
-std::mutex mtx_q_ReqActuServer;
+// std::mutex mtx_q_frames;
+// std::mutex mtx_q_ReqActuServer;
 
 //PostgreSQL Variables
-PGconn* conn;
-PGresult* res;
-const char* conninfo = "user = postgres";
+// PGconn* conn;
+// PGresult* res;
+// const char* conninfo = "user = postgres";
 
 server actual_server;
 server subscriber_server;
-server neighbor_server_1;
-//server neighbor_server_2;
+// server neighbor_server_1;
+// server neighbor_server_2;
 server server_to_redirect;
-int port = 8042;
-std::queue<Requests> l_bufferRequestsForActualServer;
-int socket_neighbor_1/*, socket_neighbor_2*/;
+// std::queue<Requests> l_bufferRequestsForActualServer;
+// int socket_neighbor_1/*, socket_neighbor_2*/;
 
 std::vector<int> accepted_connections, connected_connections;
 //Server List
@@ -126,14 +126,14 @@ server server_C = { "RWCS-vServer3", 2, "192.168.82.63" };
 server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };*/
-server server_A = { "RWCS_vServer4", 0, "192.168.82.63" };
-server server_B = { "RWCS_vServer5", 1, "192.168.82.64" };
+server server_A = { "RWCS_vServer4", 0, "192.168.82.56" };
+server server_B = { "RWCS_vServer5", 1, "192.168.82.58" };
 server server_C = { "RWCS_vServer3", 2, "192.168.82.64" };
 server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS_vServer5", 4, "192.168.82.63" };
 server server_F = { "RWCS_vServer6", 5, "192.168.82.64" };
 //Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
-std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F */};
+std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F */ };
 const unsigned int server_count = l_servers.size();
 
 #pragma endregion Global
@@ -141,16 +141,16 @@ const unsigned int server_count = l_servers.size();
 #pragma region Prototypes
 void TraitementFrameData(unsigned char[131072]);
 void* INITSocket_Redirection(void*);
-void* redirecting(void*);
+// void* redirecting(void*);
 void closeSockets();
 void closeThreads();
 void exit_prog(int);
-void send_to_server(int, std::string);
+// void send_to_server(int, std::string);
 void server_identification();
 int string_Hashing(std::string);
 int connect_to_server(server, int);
 std::string get_ip_from_actual_server();
-std::string extract_from_data(std::string);
+/* std::string extract_from_data(std::string);
 std::string extract_where_data(std::string);
 std::string extract_key_name(std::string);
 std::string extract_update_data(std::string);
@@ -160,7 +160,7 @@ std::string key_extractor(std::string);
 std::vector<std::string> extract_insert_into_data_columns(std::string);
 std::vector<std::string> extract_values_data(std::string);
 std::vector<std::string> extract_select_data(std::string);
-std::vector<std::string> extract_set_data(std::string);
+std::vector<std::string> extract_set_data(std::string);*/
 void* Listening_socket(void*);
 void send_to_server(int, unsigned char[13], unsigned char[2048]);
 void BENCH_redirecting(PrepAndExecReq);
@@ -183,6 +183,7 @@ int main(int argc, char* argv[])
         printf("Incorrect Parameters : ./CoucheLogicielle [repl|alone]\r\n");
         exit_prog(EXIT_FAILURE);
     }
+
     int CheckThreadCreation = 0;
     if (bl_UseReplication) {
         logs("main() : Starting Proxy...Replication mode selected");
@@ -201,9 +202,10 @@ int main(int argc, char* argv[])
     }
     else
         logs("main() : Starting Proxy...Standalone mode selected");
+
     if (bl_UseReplication) {
         server_identification();
-        actual_and_subscriber = { actual_server, subscriber_server/*, 0 */ };
+        actual_and_subscriber = { actual_server, subscriber_server/*, 0 */ };   // REPLICATION FACTOR
         std::cout << "Serveur actual_server: " << actual_server.server_id << " | " << actual_server.server_ip_address << " | " << actual_server.server_name << std::endl;
         std::cout << "Serveur subscriber_server: " << subscriber_server.server_id << " | " << subscriber_server.server_ip_address << " | " << subscriber_server.server_name << std::endl;
         int b = 0;
@@ -228,7 +230,7 @@ int main(int argc, char* argv[])
     //Starting threads for sockets
     //CheckThreadCreation += pthread_create(&th_FrameData, NULL, TraitementFrameData, NULL);
     if (bl_UseReplication) {
-        CheckThreadCreation += pthread_create(&th_Redirecting, NULL, redirecting, NULL);
+        // CheckThreadCreation += pthread_create(&th_Redirecting, NULL, redirecting, NULL);
         CheckThreadCreation += pthread_create(&th_Listening_socket, NULL, Listening_socket, NULL);
     }
     //Check if threads have been created
@@ -267,7 +269,7 @@ int main(int argc, char* argv[])
     logs("Fermeture des ports...");
     closeSockets();   //TODO
     logs("Libération mémoire");
-    PQfinish(conn);
+    // PQfinish(conn);
     printf("Fin du programme...\r\n");
     logs("Fin du programme");
     return EXIT_SUCCESS;
@@ -373,8 +375,8 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                         //     printf("Ouch\r\n");
                         // }
                     }
-                    else if (bl_UseReplication)
-                        l_bufferRequests.push_front(s_Requests);
+                    /* else if (bl_UseReplication)
+                        l_bufferRequests.push_front(s_Requests);*/
                     else {
                         printf("Ce message signifie que ça pue la merde ton programme Billy\r\n");
                     }
@@ -391,11 +393,11 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                     s_PrepAndExec_ToSend.origin = sockDataClient;
                     if (bl_UseReplication) {
                         BENCH_redirecting(s_PrepAndExec_ToSend);
-                  //      std::cout << "_EXECUTE_STATEMENT envoye a BENCH_redirecting depuis le client" << std::endl;
+                        //      std::cout << "_EXECUTE_STATEMENT envoye a BENCH_redirecting depuis le client" << std::endl;
                     }
                     else {
                         AddToQueue(s_PrepAndExec_ToSend);
-                    //    std::cout << "_EXECUTE_STATEMENT AddToQueue depuis le client" << std::endl;
+                        //    std::cout << "_EXECUTE_STATEMENT AddToQueue depuis le client" << std::endl;
                     }
                     memset(s_PrepAndExec_ToSend.head, 0, sizeof(s_PrepAndExec_ToSend.head));
                     memset(s_PrepAndExec_ToSend.CQLStatement, 0, sizeof(s_PrepAndExec_ToSend.CQLStatement));
@@ -486,7 +488,7 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
 #pragma endregion Requests
 
 #pragma region CQLtoSQL
-std::vector<std::string> extract_values_data(std::string values_clause_data)
+/*std::vector<std::string> extract_values_data(std::string values_clause_data)
 {
     values_clause_data = values_clause_data.substr(6, _NPOS);
     std::vector<std::string> returned_vector;
@@ -524,9 +526,9 @@ std::vector<std::string> extract_values_data(std::string values_clause_data)
     returned_vector.push_back(values_clause_data);
 
     return returned_vector;
-}
+}*/
 
-std::string extract_where_data(std::string _where_clause_data)
+/*std::string extract_where_data(std::string _where_clause_data)
 {
     std::string where_clause_data = _where_clause_data;
     where_clause_data = where_clause_data.substr(6, _NPOS);
@@ -545,7 +547,7 @@ std::string extract_where_data(std::string _where_clause_data)
     }
 
     return where_clause_data;
-}
+}*/
 #pragma endregion CQLtoSQL
 
 #pragma region Utils
@@ -575,10 +577,10 @@ void closeThreads() {
     for (int i = 0; i < _THREDS_EXEC_NUMBER; i++) {
         pthread_join(th_PrepExec[i], NULL);
     }
-    pthread_join(th_Requests, NULL);
+    // pthread_join(th_Requests, NULL);
     pthread_join(th_FrameClient, NULL);
-    pthread_join(th_FrameData, NULL);
-    pthread_join(th_Redirecting, NULL);
+    // pthread_join(th_FrameData, NULL);
+    // pthread_join(th_Redirecting, NULL);
     pthread_join(th_INITSocket_Redirection, NULL);
 }
 #pragma endregion Utils
@@ -595,7 +597,7 @@ void* INITSocket_Redirection(void* arg)
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_ANY);
-    address.sin_port = htons(port);
+    address.sin_port = htons(_REDIRECTING_PORT);
 
     bind(socket_for_client, (struct sockaddr*)&address, sizeof(address));
 
@@ -612,7 +614,7 @@ void* INITSocket_Redirection(void* arg)
 
     std::cout << "Connexion a tous les serveurs acceptees!" << std::endl;
 
-    while (1)
+    while (bl_loop)
     {
         for (unsigned int i = 0; i < accepted_connections.size(); i++)
         {
@@ -834,12 +836,15 @@ void server_identification()
         {
             actual_server = l_servers[i];
             subscriber_server = l_servers[(i + 1) % l_servers.size()];
+
+            // REPLICATION FACTOR
+
             std::cout << get_ip_from_actual_server() << std::endl;
             std::cout << "Serveur #" << actual_server.server_id << ", Nom : " << actual_server.server_name << ", Adresse IP: " << actual_server.server_ip_address << std::endl;
         }
         else
         {
-            connected_connections.push_back(connect_to_server(l_servers[i], port));
+            connected_connections.push_back(connect_to_server(l_servers[i], _REDIRECTING_PORT));
             std::cout << "Tentative de connexion avec " << l_servers[i].server_name << " (" << l_servers[i].server_ip_address << ") " << std::endl;
         }
     }
@@ -896,7 +901,7 @@ int connect_to_server(server _server_to_connect, int _port_to_connect)
     return sock_to_server;
 }
 
-void send_to_server(int _socketServer, unsigned char _stream_to_send[2], std::string _query_to_send)
+/* void send_to_server(int _socketServer, unsigned char _stream_to_send[2], std::string _query_to_send)
 {
     unsigned char cql_query[13 + _query_to_send.length()];
     unsigned char header_to_send[13] = { 0x04, 0x00, _stream_to_send[0], _stream_to_send[1], 0x07, 0x00, 0x00, (unsigned char)((_query_to_send.length() + 21) / 256), (unsigned char)(_query_to_send.length() + 21), 0x00, 0x00, (unsigned char)(_query_to_send.length() / 256), (unsigned char)(_query_to_send.length()) };
@@ -906,7 +911,7 @@ void send_to_server(int _socketServer, unsigned char _stream_to_send[2], std::st
 
     write(_socketServer, cql_query, 13 + _query_to_send.length());
     //std::cout << std::endl << "Incoming query sent" << std::endl;
-}
+}*/
 
 void send_to_server(int _socketServer, unsigned char _head[13], unsigned char _CQLStatement[2048])
 {
@@ -931,7 +936,7 @@ void send_to_server(int _socketServer, unsigned char _head[13], unsigned char _C
 #pragma endregion Server_connection
 
 #pragma region Redirecting
-void* redirecting(void* arg)
+/* void* redirecting(void* arg)
 {
     Requests req;
     std::string tempReq;
@@ -1003,7 +1008,7 @@ void* redirecting(void* arg)
     }
 
     return NULL;
-}
+}*/
 
 int string_Hashing(std::string _key_from_cql_query)
 {
@@ -1015,7 +1020,7 @@ int string_Hashing(std::string _key_from_cql_query)
     return returned_hashed_key;
 }
 
-std::string key_extractor(std::string _incoming_cql_query)
+/* std::string key_extractor(std::string _incoming_cql_query)
 {
     //TODO same as CQLTOSQL, few thinks to change
     const std::string select_clauses[4] = { "SELECT ", "FROM ", "WHERE ", "LIMIT " };
@@ -1088,35 +1093,48 @@ std::string key_extractor(std::string _incoming_cql_query)
         logs("");
         exit(EXIT_FAILURE);
     }
-}
+}*/
 
 void* Listening_socket(void* arg)
 {
     char buffer[10240];
-    int length;
-    while (1)
+    //ADDED
+    // int bytes_received;
+    //ENDADDED
+    int length = 0;
+    while (bl_loop)
     {
         for (unsigned int i = 0; i < connected_connections.size(); i++)
         {
-            if (recv(connected_connections[i], buffer, sizeof(buffer), 0) > 0)
+            if (/*bytes_received =*/ recv(connected_connections[i], buffer, sizeof(buffer), 0) > 0)
             {
-                //length = (buffer[7] * 256) + buffer[8] + 9;
+                //std::cout<<"bytes_received: "<<bytes_received<<std::endl;
+                //ADDED
+                while (bl_loop)
+                {
+                    length += (buffer[7 + length] * 256) + buffer[8 + length] + 9;
+                    if (buffer[length] == 0x00)
+                        break;
+                }
+                //ENDADDED
+
                 //unsigned char u_buffer[length];
                 //memcpy(u_buffer, buffer, length);
                 //timestamp("", )
-                for(int j = 0; j<sizeof(buffer); j++){
+                /*for(int j = 0; j<sizeof(buffer); j++){
                   printf("%c", buffer[j]);
                 }
-                printf("\r\n");
-                write(sockDataClient, buffer, sizeof(buffer));
-                
-               // std::cout << "Recu d'un autre serveur et envoye a sockDataClient" << std::endl;
+                printf("\r\n");*/
+                write(sockDataClient, buffer, length);
+
+                // std::cout << "Recu d'un autre serveur et envoye a sockDataClient" << std::endl;
 
                 memset(buffer, 0, 10240);
                 length = 0;
             }
         }
     }
+    return NULL;
 }
 
 void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)

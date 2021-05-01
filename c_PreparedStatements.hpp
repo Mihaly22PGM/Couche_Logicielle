@@ -41,10 +41,13 @@ struct server
     std::string server_ip_address;
 };
 
-struct replication_relation     //ensemble de deux serveurs pour la réplication
+struct replication_relation     //ensemble de deux serveurs pour la replication
 {
     server publisher;
     server subscriber;
+
+    //REPLICATION FACTOR
+
     //ADDED
     // int th_num;
     //ENDADDED
@@ -53,6 +56,6 @@ struct replication_relation     //ensemble de deux serveurs pour la réplication
 void* ConnPGSQLPrepStatements(void*);
 void AddToQueue(PrepAndExecReq);
 void PrepExecStatement(PGconn*, void* arg = NULL);      //CHANGED
-void PrepExecStatement(PGconn*, PGconn*, void* arg = NULL);         //CHANGED
+// void PrepExecStatement(PGconn*, PGconn*, void* arg = NULL);         //CHANGED
 void Ending();
 #endif
