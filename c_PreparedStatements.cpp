@@ -322,9 +322,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                                     fprintf(stderr, "LISTEN command REPLIC failed: %s", PQerrorMessage(replic_connPrepState));
                                 PQclear(resCreateTable_repl);
                             }
-                            //ENDADDED
-                            //std::cout << "WRITED _EXECUTE_STATEMENT_INSERT" << std::endl;
-
+                            //ENDADDED                            
                         }
                         else
                         {
@@ -334,6 +332,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                         //MOVED
                         memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
                         write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
+                        //std::cout << "WRITED _EXECUTE_STATEMENT_INSERT" << std::endl;
                         for (int i = 0; i < 10; i++)
                             memset(&fieldDataExecute[i], 0x00, sizeof(fieldDataExecute[i]));
                         //ENDMOVED
