@@ -57,7 +57,6 @@ unsigned char UseResponse[] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 
 unsigned char ResponseExecute[13] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };                                     //Prototype for Execute requests
 //int autoIncrementRequest = 0;
 
-//ADDED
 bool bl_partialRequest_REPL = false;
 bool bl_lastRequestFrame_REPL = false;
 unsigned int sommeSize_REPL = 0;
@@ -71,9 +70,7 @@ Requests s_Requests_REPL;
 PrepAndExecReq s_PrepAndExec_ToSend_REPL;
 unsigned char UseResponse_REPL[] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62 };     //Automatic response for USE requests
 unsigned char ResponseExecute_REPL[13] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };                                     //Prototype for Execute requests
-
 //int autoIncrementRequest = 0;
-//ENDADDED
 
 replication_relation actual_and_subscriber;
 
@@ -111,7 +108,14 @@ pthread_t th_Listening_socket;
 // const char* conninfo = "user = postgres";
 
 server actual_server;
-server subscriber_server;
+server subscriber1_server;  //CHANGED
+
+//REPLICATION FACTOR
+
+//ADDED
+server subscriber2_server;
+//ENDADDED
+
 // server neighbor_server_1;
 // server neighbor_server_2;
 server server_to_redirect;
@@ -126,14 +130,14 @@ server server_C = { "RWCS-vServer3", 2, "192.168.82.63" };
 server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };*/
-server server_A = { "RWCS_vServer4", 0, "192.168.82.56" };
-server server_B = { "RWCS_vServer5", 1, "192.168.82.58" };
-server server_C = { "RWCS_vServer3", 2, "192.168.82.64" };
+server server_A = { "RWCS_vServer4", 0, "192.168.82.52" };
+server server_B = { "RWCS_vServer5", 1, "192.168.82.53" };
+server server_C = { "RWCS_vServer3", 2, "192.168.82.55" };
 server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
-server server_E = { "RWCS_vServer5", 4, "192.168.82.63" };
-server server_F = { "RWCS_vServer6", 5, "192.168.82.64" };
+server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
+server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };
 //Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
-std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F */ };
+std::vector<server> l_servers = { server_A, server_B, server_C, server_D, server_E, server_F };
 const unsigned int server_count = l_servers.size();
 
 #pragma endregion Global
@@ -205,9 +209,10 @@ int main(int argc, char* argv[])
 
     if (bl_UseReplication) {
         server_identification();
-        actual_and_subscriber = { actual_server, subscriber_server/*, 0 */ };   // REPLICATION FACTOR
+        actual_and_subscriber = { actual_server, subscriber1_server, subscriber2_server };   //REPLICATION FACTOR      //CHANGED
         std::cout << "Serveur actual_server: " << actual_server.server_id << " | " << actual_server.server_ip_address << " | " << actual_server.server_name << std::endl;
-        std::cout << "Serveur subscriber_server: " << subscriber_server.server_id << " | " << subscriber_server.server_ip_address << " | " << subscriber_server.server_name << std::endl;
+        std::cout << "Serveur subscriber1_server: " << subscriber1_server.server_id << " | " << subscriber1_server.server_ip_address << " | " << subscriber1_server.server_name << std::endl;
+        std::cout << "Serveur subscriber2_server: " << subscriber2_server.server_id << " | " << subscriber2_server.server_ip_address << " | " << subscriber2_server.server_name << std::endl;
         int b = 0;
         while (b != 1)
         {
@@ -492,10 +497,8 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
 {
     values_clause_data = values_clause_data.substr(6, _NPOS);
     std::vector<std::string> returned_vector;
-
     size_t pos = 0;
     std::string token;
-
     while ((pos = values_clause_data.find(',')) != _NPOS)
     {
         token = values_clause_data.substr(0, pos);
@@ -508,11 +511,9 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
         token.erase(remove(token.begin(), token.end(), ' '), token.end());
         token.erase(remove(token.begin(), token.end(), ';'), token.end());
         token.erase(remove(token.begin(), token.end(), ')'), token.end());
-
         returned_vector.push_back(token);
         values_clause_data.erase(0, pos + 1);
     }
-
     if (values_clause_data.find('.') != _NPOS)
     {
         values_clause_data = values_clause_data.substr(values_clause_data.find('.') + 1);
@@ -522,9 +523,7 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
     values_clause_data.erase(remove(values_clause_data.begin(), values_clause_data.end(), ' '), values_clause_data.end());
     values_clause_data.erase(remove(values_clause_data.begin(), values_clause_data.end(), ';'), values_clause_data.end());
     values_clause_data.erase(remove(values_clause_data.begin(), values_clause_data.end(), ')'), values_clause_data.end());
-
     returned_vector.push_back(values_clause_data);
-
     return returned_vector;
 }*/
 
@@ -532,20 +531,16 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
 {
     std::string where_clause_data = _where_clause_data;
     where_clause_data = where_clause_data.substr(6, _NPOS);
-
     size_t pos = 0;
-
     where_clause_data.erase(remove(where_clause_data.begin(), where_clause_data.end(), '('), where_clause_data.end());
     where_clause_data.erase(remove(where_clause_data.begin(), where_clause_data.end(), '\''), where_clause_data.end());
     where_clause_data.erase(remove(where_clause_data.begin(), where_clause_data.end(), ' '), where_clause_data.end());
     where_clause_data.erase(remove(where_clause_data.begin(), where_clause_data.end(), ';'), where_clause_data.end());
     where_clause_data.erase(remove(where_clause_data.begin(), where_clause_data.end(), ')'), where_clause_data.end());
-
     while ((pos = where_clause_data.find('=')) != _NPOS)
     {
         where_clause_data.erase(0, pos + 1);
     }
-
     return where_clause_data;
 }*/
 #pragma endregion CQLtoSQL
@@ -835,9 +830,13 @@ void server_identification()
         if (get_ip_from_actual_server() == l_servers[i].server_ip_address)
         {
             actual_server = l_servers[i];
-            subscriber_server = l_servers[(i + 1) % l_servers.size()];
+            subscriber1_server = l_servers[(i + 1) % l_servers.size()];     //CHANGED
 
-            // REPLICATION FACTOR
+            //REPLICATION FACTOR
+
+            //ADDED
+            subscriber2_server = l_servers[(i + 2) % l_servers.size()];
+            //ENDADDED
 
             std::cout << get_ip_from_actual_server() << std::endl;
             std::cout << "Serveur #" << actual_server.server_id << ", Nom : " << actual_server.server_name << ", Adresse IP: " << actual_server.server_ip_address << std::endl;
@@ -905,10 +904,8 @@ int connect_to_server(server _server_to_connect, int _port_to_connect)
 {
     unsigned char cql_query[13 + _query_to_send.length()];
     unsigned char header_to_send[13] = { 0x04, 0x00, _stream_to_send[0], _stream_to_send[1], 0x07, 0x00, 0x00, (unsigned char)((_query_to_send.length() + 21) / 256), (unsigned char)(_query_to_send.length() + 21), 0x00, 0x00, (unsigned char)(_query_to_send.length() / 256), (unsigned char)(_query_to_send.length()) };
-
     memcpy(cql_query, header_to_send, 13);
     memcpy(cql_query + 13, _query_to_send.c_str(), _query_to_send.length());
-
     write(_socketServer, cql_query, 13 + _query_to_send.length());
     //std::cout << std::endl << "Incoming query sent" << std::endl;
 }*/
@@ -950,17 +947,13 @@ void send_to_server(int _socketServer, unsigned char _head[13], unsigned char _C
             memcpy(req.opcode, l_bufferRequests.back().opcode, 1);
             l_bufferRequests.pop_back();
             //std::cout << "redirecting() pop back ok" << std::endl;
-
             std::string key_from_cql_query = key_extractor(tempReq);
-
             //On hash la clé extraite de la requête via la fonction string_Hashing()
             int hashed_key = string_Hashing(key_from_cql_query);
             //std::cout << hashed_key << std::endl;
-
             //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
             int range_id = hashed_key % server_count;
 //            std::cout << range_id << std::endl;
-
             //On détermine le serveur vers lequel rediriger
             if (range_id == server_A.server_id)
             {
@@ -986,7 +979,6 @@ void send_to_server(int _socketServer, unsigned char _head[13], unsigned char _C
             {
                 server_to_redirect = server_F;
             }
-
             if (server_to_redirect.server_id != actual_server.server_id)
             {
                 //Redirection
@@ -1006,7 +998,6 @@ void send_to_server(int _socketServer, unsigned char _head[13], unsigned char _C
             key_from_cql_query = "";
         }
     }
-
     return NULL;
 }*/
 
@@ -1027,66 +1018,47 @@ int string_Hashing(std::string _key_from_cql_query)
     const std::string update_clauses[3] = { "UPDATE ", "SET ", "WHERE " };
     const std::string insert_into_clauses[2] = { "INSERT INTO ", "VALUES " };
     const std::string delete_clauses[2] = { "DELETE ", "WHERE " };
-
     size_t where_sub_pos, limit_sub_pos, values_sub_pos = 0;
-
     std::string where_clause, values_clause = "";
-
     std::string key = "";
-
     if (_incoming_cql_query.substr(0, 6) == "SELECT" || _incoming_cql_query.substr(0, 6) == "select")
     {
         where_sub_pos = _incoming_cql_query.find(select_clauses[2]);
         limit_sub_pos = _incoming_cql_query.find(select_clauses[3]);
-
         where_clause = _incoming_cql_query.substr(where_sub_pos, limit_sub_pos - where_sub_pos);
-
         //On extrait, affiche et retourne la clé
         key = extract_where_data(where_clause);
         //std::cout << "Extracted Key: " << key << std::endl;
-
         return key;
     }
-
     //Si requête UPDATE:
     else if (_incoming_cql_query.find("UPDATE ") != std::string::npos)
     {
         where_sub_pos = _incoming_cql_query.find(update_clauses[2]);
-
         where_clause = _incoming_cql_query.substr(where_sub_pos, std::string::npos);
-
         //On extrait, affiche et retourne la clé
         key = extract_where_data(where_clause);
         //std::cout << "Extracted Key: " << key << std::endl;
-
         return key;
     }
-
     //Si requête INSERT:
     else if (_incoming_cql_query.find("INSERT ") != std::string::npos)
     {
         values_sub_pos = _incoming_cql_query.find(insert_into_clauses[1]);
-
         values_clause = _incoming_cql_query.substr(values_sub_pos, std::string::npos);
-
         //On extrait, affiche et retourne la clé
         key = extract_values_data(values_clause)[0];
         //std::cout << "Extracted Key: " << key << std::endl;
-
         return key;
     }
-
     //Si requête DELETE:
     else if (_incoming_cql_query.find("DELETE ") != std::string::npos)
     {
         where_sub_pos = _incoming_cql_query.find(delete_clauses[1]);
-
         where_clause = _incoming_cql_query.substr(where_sub_pos, std::string::npos);
-
         //On extrait, affiche et retourne la clé
         key = extract_where_data(where_clause);
         //std::cout << "Extracted Key: " << key << std::endl;
-
         return key;
     }
     else {

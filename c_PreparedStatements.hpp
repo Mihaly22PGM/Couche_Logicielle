@@ -44,18 +44,18 @@ struct server
 struct replication_relation     //ensemble de deux serveurs pour la replication
 {
     server publisher;
-    server subscriber;
+    server subscriber1;     //CHANGED
 
     //REPLICATION FACTOR
 
     //ADDED
-    // int th_num;
+    server subscriber2;
     //ENDADDED
 };
 
 void* ConnPGSQLPrepStatements(void*);
 void AddToQueue(PrepAndExecReq);
-void PrepExecStatement(PGconn*, void* arg = NULL);      //CHANGED
-// void PrepExecStatement(PGconn*, PGconn*, void* arg = NULL);         //CHANGED
+void PrepExecStatement(PGconn*, void* arg = NULL);
+// void PrepExecStatement(PGconn*, PGconn*, void* arg = NULL);
 void Ending();
 #endif

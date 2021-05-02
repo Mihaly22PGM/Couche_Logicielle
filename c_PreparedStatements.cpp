@@ -13,7 +13,7 @@ std::mutex mtx_accessQueue;
 std::mutex mtx_getID;
 
 bool bl_continueThread = true;
-int ID_Thread = 0;
+// int ID_Thread = 0;
 
 void* ConnPGSQLPrepStatements(void* arg) {    //Create the threads that will read the prepared statements requests
     //Definitions
@@ -56,21 +56,16 @@ void Ending() {
 
 void PrepExecStatement(PGconn* connPrepState, void* arg) {
     PGresult* resCreateTable;
-    //ADDED
     PGresult* resCreateTable_repl;
-    //ENDADDED
+
     const char* command;
-    const char* command_sub;
+    // const char* command_sub;
     char defaultINSERT[] = "CALL pub_insert($1::varchar(24),$2::char(100),$3::char(100),$4::char(100),$5::char(100),$6::char(100),$7::char(100),$8::char(100),$9::char(100),$10::char(100),$11::char(100));";
-    char defaultINSERTsub[] = "CALL sub_insert_sx($1::varchar(24));";
-    char defaultREFRESHpub[] = "ALTER SUBSCRIPTION s_sx REFRESH PUBLICATION;";
+    // char defaultINSERTsub[] = "CALL sub_insert_sx($1::varchar(24));";
+    // char defaultREFRESHpub[] = "ALTER SUBSCRIPTION s_sx REFRESH PUBLICATION;";
     const char* paramValues[11];
-    //ADDED
-    const char* paramValues_repl[1];
+    // const char* paramValues_repl[1];
 
-    //REPLICATION FACTOR
-
-    //ENDADDED
     unsigned char ResponseToExecute_INSERT[13] = {      //CHANGED
         0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01
     };
@@ -90,7 +85,6 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
         0x00, 0x00, 0x00, 0x00
     };
 
-    //ADDED
     //POUR LE RUN
     /* unsigned char ResponseToPrepare_SELECT[203] = {
         0x84, 0x00, 0x12, 0x40, 0x08, 0x00, 0x00, 0x00, 0xc2, 0x00, 0x00, 0x00, 0x04, 0x00, 0x10, 0xee,
@@ -187,7 +181,6 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
         0x66, 0x69, 0x65, 0x6c, 0x64, 0x39, 0x00, 0x0d, 0x00, 0x04, 0x79, 0x5f, 0x69, 0x64, 0x00, 0x0d,
         0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00
     };*/
-    //ENDADDED
 
     int tableNameSize = 0;
     char fieldDataExecute[10][100];
@@ -197,32 +190,35 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
 
     const char connection_string_host[] = "host = ";      //...destination_server.server_ip_address
     const char connection_string_user[] = " user = postgres password = Gang-bang69";    //TODO is password usefull?
-    PGconn* replic_connPrepState;
-    PGresult* replic_resPrepState;
+
     replication_relation* replication_servers;
-    //ADDED
     server origin_server;
+    server destination1_server;     //CHANGED
+    PGconn* replic1_connPrepState;      //CHANGED
+    PGresult* replic1_resPrepState;     //CHANGED
+    char replic1_conninfoPrepState[65];     //CHANGED
+
+    //REPLICATION FACTOR
+
+    //ADDED
+    server destination2_server;
+    PGconn* replic2_connPrepState;
+    PGresult* replic2_resPrepState;
+    char replic2_conninfoPrepState[65];
     //ENDADDED
-    server destination_server;
 
-    //REPLICATION FACTOR
-
-    char replic_conninfoPrepState[65];
-
-    //REPLICATION FACTOR
-
-    int id_thr;
-    int iter_refreshPub = 0;
-    bool bl_firstThread = false;
+    // int id_thr;
+    // int iter_refreshPub = 0;
+    // bool bl_firstThread = false;
     // bool bl_repl = false;
 
     //Set Thread ID
-    while (!mtx_getID.try_lock()) {}
-    id_thr = ID_Thread;
-    ID_Thread++;
-    mtx_getID.unlock();
-    if (id_thr == 0)
-        bl_firstThread = true;
+    // while (!mtx_getID.try_lock()) {}
+    // id_thr = ID_Thread;
+    // ID_Thread++;
+    // mtx_getID.unlock();
+    // if (id_thr == 0)
+        // bl_firstThread = true;
 
     //Set Thread ID into requests
     // const char* idTh;
@@ -232,44 +228,72 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
 
     if (arg != NULL) {
         replication_servers = (replication_relation*)arg;
-        //ADDED
         origin_server = replication_servers->publisher;
-        //ENDADDED
         // id_thr = replication_servers->th_num;
-        destination_server = replication_servers->subscriber;
-
-        memcpy(&replic_conninfoPrepState[0], &connection_string_host[0], sizeof(connection_string_host) - 1);
-        memcpy(&replic_conninfoPrepState[sizeof(connection_string_host) - 1], &(destination_server.server_ip_address.c_str())[0], destination_server.server_ip_address.length());
-        memcpy(&replic_conninfoPrepState[sizeof(connection_string_host) - 1 + destination_server.server_ip_address.length()], &connection_string_user[0], sizeof(connection_string_user) - 1);
-
-        //MOVED
-        // memcpy(&defaultINSERTsub[21], idTh, 1);
-        //ADDED
-        memcpy(&defaultINSERTsub[17], (std::to_string(origin_server.server_id)).c_str(), 1);
-        memcpy(&defaultREFRESHpub[22], (std::to_string(origin_server.server_id)).c_str(), 1);
-        //ENDADDED
-        command_sub = defaultINSERTsub;
-        //ENDMOVED
-
-        replic_connPrepState = PQconnectdb(replic_conninfoPrepState);
-        /* Check to see that the backend connection was successfully made */
-        if (PQstatus(replic_connPrepState) != CONNECTION_OK)
-        {
-            logs("ConnPGSQLPrepStatements() REPLIC: Connexion to database failed", ERROR);
-        }
-        /* Set always-secure search path, so malicious users can't take control. */
-        replic_resPrepState = PQexec(replic_connPrepState, "SELECT pg_catalog.set_config('search_path', 'public', false)");
-        if (PQresultStatus(replic_resPrepState) != PGRES_TUPLES_OK)
-            logs("ConnPGSQLPrepStatements() REPLIC: Secure search path error", ERROR);
-        else
-        {
-            // bl_repl=true;
-            logs("ConnPGSQLPrepStatements() REPLIC: Connexion to PostgreSQL sucess");
-        }
-        PQclear(replic_resPrepState);
+        destination1_server = replication_servers->subscriber1;     //CHANGED
 
         //REPLICATION FACTOR
 
+        //ADDED
+        destination2_server = replication_servers->subscriber2;
+        //ENDADDED
+
+        memcpy(&replic1_conninfoPrepState[0], &connection_string_host[0], sizeof(connection_string_host) - 1);
+        memcpy(&replic1_conninfoPrepState[sizeof(connection_string_host) - 1], &(destination1_server.server_ip_address.c_str())[0], destination1_server.server_ip_address.length());
+        memcpy(&replic1_conninfoPrepState[sizeof(connection_string_host) - 1 + destination1_server.server_ip_address.length()], &connection_string_user[0], sizeof(connection_string_user) - 1);
+
+        //REPLICATION FACTOR
+
+        //ADDED
+        memcpy(&replic2_conninfoPrepState[0], &connection_string_host[0], sizeof(connection_string_host) - 1);
+        memcpy(&replic2_conninfoPrepState[sizeof(connection_string_host) - 1], &(destination2_server.server_ip_address.c_str())[0], destination2_server.server_ip_address.length());
+        memcpy(&replic2_conninfoPrepState[sizeof(connection_string_host) - 1 + destination2_server.server_ip_address.length()], &connection_string_user[0], sizeof(connection_string_user) - 1);
+        //ENDADDED
+
+        //MOVED
+        // memcpy(&defaultINSERTsub[21], idTh, 1);
+        // memcpy(&defaultINSERTsub[17], (std::to_string(origin_server.server_id)).c_str(), 1);
+        // memcpy(&defaultREFRESHpub[22], (std::to_string(origin_server.server_id)).c_str(), 1);
+        // command_sub = defaultINSERTsub;
+        //ENDMOVED
+
+        replic1_connPrepState = PQconnectdb(replic1_conninfoPrepState);
+        /* Check to see that the backend connection was successfully made */
+        if (PQstatus(replic1_connPrepState) != CONNECTION_OK)
+        {
+            logs("ConnPGSQLPrepStatements() REPLIC1: Connexion to database failed", ERROR);
+        }
+        /* Set always-secure search path, so malicious users can't take control. */
+        replic1_resPrepState = PQexec(replic1_connPrepState, "SELECT pg_catalog.set_config('search_path', 'public', false)");
+        if (PQresultStatus(replic1_resPrepState) != PGRES_TUPLES_OK)
+            logs("ConnPGSQLPrepStatements() REPLIC1: Secure search path error", ERROR);
+        else
+        {
+            // bl_repl=true;
+            logs("ConnPGSQLPrepStatements() REPLIC1: Connexion to PostgreSQL sucess");
+        }
+        PQclear(replic1_resPrepState);
+
+        //REPLICATION FACTOR
+
+        //ADDED
+        replic2_connPrepState = PQconnectdb(replic2_conninfoPrepState);
+        /* Check to see that the backend connection was successfully made */
+        if (PQstatus(replic2_connPrepState) != CONNECTION_OK)
+        {
+            logs("ConnPGSQLPrepStatements() REPLIC2: Connexion to database failed", ERROR);
+        }
+        /* Set always-secure search path, so malicious users can't take control. */
+        replic2_resPrepState = PQexec(replic2_connPrepState, "SELECT pg_catalog.set_config('search_path', 'public', false)");
+        if (PQresultStatus(replic2_resPrepState) != PGRES_TUPLES_OK)
+            logs("ConnPGSQLPrepStatements() REPLIC2: Secure search path error", ERROR);
+        else
+        {
+            // bl_repl=true;
+            logs("ConnPGSQLPrepStatements() REPLIC2: Connexion to PostgreSQL sucess");
+        }
+        PQclear(replic2_resPrepState);
+        //ENDADDED
     }
 
     while (bl_continueThread) {
@@ -296,10 +320,8 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                         }
                         cursor = tableNameSize + 27;
                         paramValues[0] = tableName;
-                        //ADDED
-                        paramValues_repl[0] = tableName;
+                        // paramValues_repl[0] = tableName;
                         //std::cout << "tableName: " << std::string(tableName) << std::endl;
-                        //ENDADDED
                         for (int i = 0; i < 10; i++) {
                             memcpy(&fieldDataExecute[i], &s_Thr_PrepAndExec.CQLStatement[cursor + 4], sizeof(fieldDataExecute[i]) + 2);
                             paramValues[i + 1] = fieldDataExecute[i];
@@ -311,18 +333,25 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                         if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
                         {
                             PQclear(resCreateTable);
-                            //ADDED
                             if (arg != NULL)
                             {
+                                // std::cout << std::string(command_sub) << std::endl;
+                                // resCreateTable_repl = PQexecParams(replic1_connPrepState, command_sub, 1, (const Oid*)NULL, paramValues_repl, NULL, NULL, 0);
+                                resCreateTable_repl = PQexecParams(replic1_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+                                if (PQresultStatus(resCreateTable_repl) != PGRES_COMMAND_OK)
+                                    fprintf(stderr, "LISTEN command REPLIC 1 failed: %s", PQerrorMessage(replic1_connPrepState));
+                                PQclear(resCreateTable_repl);
+
                                 //REPLICATION FACTOR
 
-                                // std::cout << std::string(command_sub) << std::endl;
-                                resCreateTable_repl = PQexecParams(replic_connPrepState, command_sub, 1, (const Oid*)NULL, paramValues_repl, NULL, NULL, 0);
+                                //ADDED
+                                // resCreateTable_repl = PQexecParams(replic2_connPrepState, command_sub, 1, (const Oid*)NULL, paramValues_repl, NULL, NULL, 0);
+                                resCreateTable_repl = PQexecParams(replic2_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
                                 if (PQresultStatus(resCreateTable_repl) != PGRES_COMMAND_OK)
-                                    fprintf(stderr, "LISTEN command REPLIC failed: %s", PQerrorMessage(replic_connPrepState));
+                                    fprintf(stderr, "LISTEN command REPLIC 2 failed: %s", PQerrorMessage(replic2_connPrepState));
                                 PQclear(resCreateTable_repl);
+                                //ENDADDED
                             }
-                            //ENDADDED                            
                         }
                         else
                         {
@@ -338,19 +367,20 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                         //ENDMOVED
                         memset(tableName, 0x00, sizeof(tableName));
                     }
-                    if (bl_firstThread) {
+
+                    /*if (bl_firstThread) {
                         iter_refreshPub++;
                         if (iter_refreshPub > _ITER_FOR_PUB_REFRESH) {
                             while (!mtx_accessQueue.try_lock()) {}
-                            resCreateTable = PQexec(replic_connPrepState, defaultREFRESHpub);
+                            resCreateTable = PQexec(replic1_connPrepState, defaultREFRESHpub);
                             if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
                                 iter_refreshPub = 0;
                             else
-                                fprintf(stderr, "REFRESH command REPLIC failed: %s", PQerrorMessage(replic_connPrepState));
+                                fprintf(stderr, "REFRESH command REPLIC failed: %s", PQerrorMessage(replic1_connPrepState));
                             PQclear(resCreateTable);
                             mtx_accessQueue.unlock();
                         }
-                    }
+                    }*/
                 }
                 else
                     mtx_accessQueue.unlock();
@@ -359,5 +389,5 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
         else
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-    PQfinish(replic_connPrepState);
+    PQfinish(replic1_connPrepState);
 }
