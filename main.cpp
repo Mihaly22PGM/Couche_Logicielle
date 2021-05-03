@@ -108,12 +108,12 @@ pthread_t th_Listening_socket;
 // const char* conninfo = "user = postgres";
 
 server actual_server;
-server subscriber1_server;  //CHANGED
+/*server subscriber1_server;  //CHANGED
 
 //REPLICATION FACTOR
 
 //ADDED
-server subscriber2_server;
+server subscriber2_server;*/
 //ENDADDED
 
 // server neighbor_server_1;
@@ -124,20 +124,20 @@ server server_to_redirect;
 
 std::vector<int> accepted_connections, connected_connections;
 //Server List
-/*server server_A = { "RWCS-vServer1", 0, "192.168.82.55" };
-server server_B = { "RWCS-vServer2", 1, "192.168.82.61" };
-server server_C = { "RWCS-vServer3", 2, "192.168.82.63" };
-server server_D = { "RWCS-vServer4", 3, "192.168.82.56" };
-server server_E = { "RWCS-vServer5", 4, "192.168.82.58" };
-server server_F = { "RWCS-vServer6", 5, "192.168.82.59" };*/
-server server_A = { "RWCS_vServer4", 0, "192.168.82.52" };
+/*server server_A = { "RWCS_vServer4", 0, "192.168.82.52" };
 server server_B = { "RWCS_vServer5", 1, "192.168.82.53" };
 server server_C = { "RWCS_vServer3", 2, "192.168.82.55" };
 server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
-server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };
+server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };*/
+server server_A = { "RWCS_vServer4", 0, "192.168.82.52" };
+server server_B = { "RWCS_vServer5", 1, "192.168.82.56" };
+/*server server_C = { "RWCS_vServer3", 2, "192.168.82.55" };
+server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
+server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
+server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };*/
 //Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
-std::vector<server> l_servers = { server_A, server_B, server_C, server_D, server_E, server_F };
+std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F */ };
 const unsigned int server_count = l_servers.size();
 
 #pragma endregion Global
@@ -209,10 +209,10 @@ int main(int argc, char* argv[])
 
     if (bl_UseReplication) {
         server_identification();
-        actual_and_subscriber = { actual_server, subscriber1_server, subscriber2_server };   //REPLICATION FACTOR      //CHANGED
+        /*actual_and_subscriber = { actual_server, subscriber1_server, subscriber2_server };   //REPLICATION FACTOR      //CHANGED
         std::cout << "Serveur actual_server: " << actual_server.server_id << " | " << actual_server.server_ip_address << " | " << actual_server.server_name << std::endl;
         std::cout << "Serveur subscriber1_server: " << subscriber1_server.server_id << " | " << subscriber1_server.server_ip_address << " | " << subscriber1_server.server_name << std::endl;
-        std::cout << "Serveur subscriber2_server: " << subscriber2_server.server_id << " | " << subscriber2_server.server_ip_address << " | " << subscriber2_server.server_name << std::endl;
+        std::cout << "Serveur subscriber2_server: " << subscriber2_server.server_id << " | " << subscriber2_server.server_ip_address << " | " << subscriber2_server.server_name << std::endl;*/
         int b = 0;
         while (b != 1)
         {
@@ -226,7 +226,7 @@ int main(int argc, char* argv[])
             // CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)bl_Load);
             if (bl_UseReplication) {
                 // actual_and_subscriber.th_num = i;
-                CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)&actual_and_subscriber);
+                CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, /*(void*)&actual_and_subscriber*/ NULL);      //CHANGED
             }
             else
                 CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, NULL);
@@ -830,12 +830,12 @@ void server_identification()
         if (get_ip_from_actual_server() == l_servers[i].server_ip_address)
         {
             actual_server = l_servers[i];
-            subscriber1_server = l_servers[(i + 1) % l_servers.size()];     //CHANGED
+            /*subscriber1_server = l_servers[(i + 1) % l_servers.size()];     //CHANGED
 
             //REPLICATION FACTOR
 
             //ADDED
-            subscriber2_server = l_servers[(i + 2) % l_servers.size()];
+            subscriber2_server = l_servers[(i + 2) % l_servers.size()];*/
             //ENDADDED
 
             std::cout << get_ip_from_actual_server() << std::endl;
@@ -1130,7 +1130,7 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
     {
         server_to_redirect = server_B;
     }
-    else if (range_id == server_C.server_id)
+    /*else if (range_id == server_C.server_id)      //CHANGED
     {
         server_to_redirect = server_C;
     }
@@ -1145,7 +1145,7 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
     else if (range_id == server_F.server_id)
     {
         server_to_redirect = server_F;
-    }
+    }*/
 
     if (server_to_redirect.server_id != actual_server.server_id)
     {
