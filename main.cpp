@@ -38,6 +38,9 @@ bool bl_UseBench = false;
 bool bl_Load = false;
 bool bl_Error_Args = false;
 bool bl_loop = true;
+//ADDED
+bool bl_SlaveMaster = false;
+//ENDADDED
 
 unsigned char buffData[131072];
 
@@ -97,6 +100,9 @@ pthread_t th_FrameClient;
 pthread_t th_INITSocket_Redirection;
 pthread_t th_PrepExec[_THREDS_EXEC_NUMBER];
 pthread_t th_Listening_socket;
+//ADDED
+pthread_t th_PrepExec_SLAVE;
+//ENDADDED
 
 //Mutex
 // std::mutex mtx_q_frames;
@@ -130,15 +136,18 @@ server server_C = { "RWCS_vServer3", 2, "192.168.82.55" };
 server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };*/
-server server_A = { "RWCS_vServer4", 0, "192.168.82.52" };
-server server_B = { "RWCS_vServer5", 1, "192.168.82.56" };
-/*server server_C = { "RWCS_vServer3", 2, "192.168.82.55" };
-server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
+server server_A = { "RWCS_vServer1", 0, "192.168.82.52" };
+server server_B = { "RWCS_vServer4", 1, "192.168.82.56" };
+server server_C = { "RWCS_vServer3", 2, "192.168.82.53" };
+/*server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };*/
-//Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste
-std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F */ };
+//Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste (METTRE LES MASTERS AU DEBUT)
+std::vector<server> l_servers = { server_A, server_B, server_C/*, server_D, server_E, server_F */ };
 const unsigned int server_count = l_servers.size();
+//ADDED
+unsigned int master_count = server_count;
+//ENDADDED
 
 #pragma endregion Global
 
@@ -174,10 +183,11 @@ int main(int argc, char* argv[])
 {
     bl_Load = true;     //Load mode forced
     bl_UseBench = true; //bench mode forced
+    bl_UseReplication = true; //replication mode forced
     if (argc == 2) {    //1 arguments
-        if (std::string(argv[1]) == "repl")
-            bl_UseReplication = true;
-        else if (std::string(argv[1]) != "alone")
+        if (std::string(argv[1]) == "master")
+            bl_SlaveMaster = true;      //CHANGED
+        else if (std::string(argv[1]) != "slave")
             bl_Error_Args = true;
     }
     else {
@@ -188,14 +198,21 @@ int main(int argc, char* argv[])
         exit_prog(EXIT_FAILURE);
     }
 
+    //ADDED
+    if (bl_SlaveMaster)
+        master_count = server_count - 1;
+    //ENDADDED
+
     int CheckThreadCreation = 0;
     if (bl_UseReplication) {
-        logs("main() : Starting Proxy...Replication mode selected");
-        CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);
-        if (CheckThreadCreation != 0)
-            logs("main() : Thread th_INITSocket_Redirection creation failed", ERROR);
-        else
-            logs("main() : Thread th_INITSocket_Redirection created");
+        if (bl_SlaveMaster) {        //CHANGED
+            logs("main() : Starting Proxy...Replication mode selected");
+            CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);
+            if (CheckThreadCreation != 0)
+                logs("main() : Thread th_INITSocket_Redirection creation failed", ERROR);
+            else
+                logs("main() : Thread th_INITSocket_Redirection created");
+        }
         int a = 0;
         while (a != 1)
         {
@@ -221,17 +238,22 @@ int main(int argc, char* argv[])
             std::cout << std::endl;
         }
     }
-    if (bl_UseBench) {
+    if (bl_UseBench && bl_SlaveMaster) {
         for (int i = 0; i < _THREDS_EXEC_NUMBER; i++) {
             // CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)bl_Load);
-            if (bl_UseReplication) {
+            /*if (bl_UseReplication) {
                 // actual_and_subscriber.th_num = i;
-                CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, /*(void*)&actual_and_subscriber*/ NULL);      //CHANGED
+                CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, (void*)&actual_and_subscriber);
             }
-            else
-                CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, NULL);
+            else*/
+            CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, NULL);//CHANGED
         }
     }
+    //ADDED
+    else if (!bl_SlaveMaster)
+        CheckThreadCreation += pthread_create(&th_PrepExec_SLAVE, NULL, ConnPGSQLPrepStatements, NULL);
+    //ENDADDED
+
     //Starting threads for sockets
     //CheckThreadCreation += pthread_create(&th_FrameData, NULL, TraitementFrameData, NULL);
     if (bl_UseReplication) {
@@ -398,11 +420,11 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                     s_PrepAndExec_ToSend.origin = sockDataClient;
                     if (bl_UseReplication) {
                         BENCH_redirecting(s_PrepAndExec_ToSend);
-                        //      std::cout << "_EXECUTE_STATEMENT envoye a BENCH_redirecting depuis le client" << std::endl;
+                        //std::cout << "_EXECUTE_STATEMENT envoye a BENCH_redirecting depuis le client" << std::endl;
                     }
                     else {
                         AddToQueue(s_PrepAndExec_ToSend);
-                        //    std::cout << "_EXECUTE_STATEMENT AddToQueue depuis le client" << std::endl;
+                        //std::cout << "_EXECUTE_STATEMENT AddToQueue depuis le client" << std::endl;
                     }
                     memset(s_PrepAndExec_ToSend.head, 0, sizeof(s_PrepAndExec_ToSend.head));
                     memset(s_PrepAndExec_ToSend.CQLStatement, 0, sizeof(s_PrepAndExec_ToSend.CQLStatement));
@@ -825,17 +847,17 @@ void* INITSocket_Redirection(void* arg)
 #pragma region Preparation
 void server_identification()
 {
-    for (unsigned int i = 0; i < l_servers.size(); i++)
+    for (unsigned int i = 0; i < master_count; i++)
     {
         if (get_ip_from_actual_server() == l_servers[i].server_ip_address)
         {
             actual_server = l_servers[i];
-            /*subscriber1_server = l_servers[(i + 1) % l_servers.size()];     //CHANGED
+            /*subscriber1_server = l_servers[(i + 1) % server_count];     //CHANGED
 
             //REPLICATION FACTOR
 
             //ADDED
-            subscriber2_server = l_servers[(i + 2) % l_servers.size()];*/
+            subscriber2_server = l_servers[(i + 2) % server_count];*/
             //ENDADDED
 
             std::cout << get_ip_from_actual_server() << std::endl;
@@ -1079,6 +1101,7 @@ void* Listening_socket(void* arg)
             bytes_received = recv(connected_connections[i], buffer, sizeof(buffer), 0);
             if (bytes_received > 0)
             {
+                //std::cout << "Recu d'un autre serveur" << std::endl;
                 /*while(bl_loop)
                 {
                     length += (buffer[7+length] * 256) + buffer[8+length] + 9;
@@ -1087,7 +1110,7 @@ void* Listening_socket(void* arg)
                 }*/
                 write(sockDataClient, buffer, /*length*/bytes_received);
 
-                // std::cout << "Recu d'un autre serveur et envoye a sockDataClient" << std::endl;
+                //std::cout << "Envoye a sockDataClient" << std::endl;
 
                 memset(buffer, 0, bytes_received);
                 // length = 0;
@@ -1118,7 +1141,7 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
     //cout << hashed_key << endl;
 
     //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
-    int range_id = hashed_key % server_count;
+    int range_id = hashed_key % (server_count - 1);
     //cout << range_id << endl;
 
     //On détermine le serveur vers lequel rediriger
