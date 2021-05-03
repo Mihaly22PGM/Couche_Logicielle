@@ -55,8 +55,8 @@ void Ending() {
 }
 
 void PrepExecStatement(PGconn* connPrepState, void* arg) {
-    PGresult* resCreateTable;
-    PGresult* resCreateTable_repl;
+    // PGresult* resCreateTable;
+    // PGresult* resCreateTable_repl;
 
     const char* command;
     // const char* command_sub;
@@ -329,7 +329,32 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                             cursor += 104;
                         }
                         //std::cout << std::string(command) << std::endl;
-                        resCreateTable = PQexecParams(connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+
+                        //ASYNC
+                        //ADDED
+                        PQsendQueryParams(connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+                        if (arg != NULL)
+                        {
+                            PQsendQueryParams(replic1_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+                            PQsendQueryParams(replic2_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+                        }
+
+                        if (PQresultStatus(PQgetResult(connPrepState)) == PGRES_COMMAND_OK)
+                        {
+                            memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
+                            write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
+                            PQclear(PQgetResult(connPrepState));
+                        }
+                        if (PQresultStatus(PQgetResult(replic1_connPrepState)) == PGRES_COMMAND_OK)
+                            PQclear(PQgetResult(replic1_connPrepState));
+
+                        if (PQresultStatus(PQgetResult(replic2_connPrepState)) == PGRES_COMMAND_OK)
+                            PQclear(PQgetResult(replic2_connPrepState));
+                        //ENDADDED
+
+                        //SYNC
+                        /*resCreateTable = PQexecParams(connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+
                         if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
                         {
                             PQclear(resCreateTable);
@@ -360,7 +385,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                         }
                         //MOVED
                         memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
-                        write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
+                        write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);*/
                         //std::cout << "WRITED _EXECUTE_STATEMENT_INSERT" << std::endl;
                         for (int i = 0; i < 10; i++)
                             memset(&fieldDataExecute[i], 0x00, sizeof(fieldDataExecute[i]));
