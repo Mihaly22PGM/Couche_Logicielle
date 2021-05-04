@@ -17,28 +17,33 @@ bool bl_continueThread = true;
 
 void* ConnPGSQLPrepStatements(void* arg) {    //Create the threads that will read the prepared statements requests
     //Definitions
-    PGconn* connPrepState;
+    PGconn* connPrepState[2];
     PGresult* resPrepState;
     const char* conninfoPrepState = "user = postgres";
     //Execution
-    connPrepState = PQconnectdb(conninfoPrepState);
-    /* Check to see that the backend connection was successfully made */
-    if (PQstatus(connPrepState) != CONNECTION_OK)
+    for (int i = 0; i < 2; i++)
     {
-        logs("ConnPGSQLPrepStatements() : Connexion to database failed", ERROR);
+        connPrepState[i] = PQconnectdb(conninfoPrepState);
+        /* Check to see that the backend connection was successfully made */
+        if (PQstatus(connPrepState[i]) != CONNECTION_OK)
+        {
+            logs("ConnPGSQLPrepStatements() : Connexion to database failed", ERROR);
+        }
+        /* Set always-secure search path, so malicious users can't take control. */
+        resPrepState = PQexec(connPrepState[i], "SELECT pg_catalog.set_config('search_path', 'public', false)");
+        if (PQresultStatus(resPrepState) != PGRES_TUPLES_OK)
+            logs("ConnPGSQLPrepStatements() : Secure search path error", ERROR);
+        else
+            logs("ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess");
+        PQclear(resPrepState);
+        printf("Yoloooooo\r\n");
     }
-    /* Set always-secure search path, so malicious users can't take control. */
-    resPrepState = PQexec(connPrepState, "SELECT pg_catalog.set_config('search_path', 'public', false)");
-    if (PQresultStatus(resPrepState) != PGRES_TUPLES_OK)
-        logs("ConnPGSQLPrepStatements() : Secure search path error", ERROR);
-    else
-        logs("ConnPGSQLPrepStatements() : Connexion to PostgreSQL sucess");
-    PQclear(resPrepState);
-    printf("Yoloooooo\r\n");
+
     PrepExecStatement(connPrepState, arg);
 
     //At the end, closing
-    PQfinish(connPrepState);
+    for (int i = 0; i < 2; i++)
+        PQfinish(connPrepState[i]);
     logs("ConnPGSQLPrepStatements() : Fermeture du thread");
     pthread_exit(NULL);
 }
@@ -54,9 +59,13 @@ void Ending() {
     bl_continueThread = false;
 }
 
-void PrepExecStatement(PGconn* connPrepState, void* arg) {
+void PrepExecStatement(PGconn* connPrepState[2], void* arg) {
     // PGresult* resCreateTable;
     // PGresult* resCreateTable_repl;
+    //ADDED
+    PrepAndExecReq l_Thr_PrepAndExec[2];
+    int PrepAndExecReq_number;
+    //ENDADDED
 
     const char* command;
     // const char* command_sub;
@@ -300,100 +309,114 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
         if (q_PrepAndExecRequests.size() > 0) {
             if (mtx_accessQueue.try_lock()) {
                 if (q_PrepAndExecRequests.size() > 0) {
-                    memcpy(&s_Thr_PrepAndExec.head[0], &q_PrepAndExecRequests.front().head[0], sizeof(s_Thr_PrepAndExec.head));
-                    memcpy(&s_Thr_PrepAndExec.CQLStatement[0], &q_PrepAndExecRequests.front().CQLStatement[0], sizeof(s_Thr_PrepAndExec.CQLStatement));
-                    s_Thr_PrepAndExec.origin = q_PrepAndExecRequests.front().origin;
-                    q_PrepAndExecRequests.pop();
-                    mtx_accessQueue.unlock();
-                    if (s_Thr_PrepAndExec.head[4] == _PREPARE_STATEMENT) {
-                        //std::cout << "== _PREPARE_STATEMENT" << std::endl;
-                        memcpy(&ResponseToPrepare_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
-                        write(s_Thr_PrepAndExec.origin, ResponseToPrepare_INSERT, sizeof(ResponseToPrepare_INSERT));
-                        //std::cout << "WRITED _PREPARE_STATEMENT_INSERT" << std::endl;
+                    for (int i = 0; i < 2; i++)
+                    {
+                        if (q_PrepAndExecRequests.size() > 0) {
+                            memcpy(&s_Thr_PrepAndExec.head[0], &q_PrepAndExecRequests.front().head[0], sizeof(s_Thr_PrepAndExec.head));
+                            memcpy(&s_Thr_PrepAndExec.CQLStatement[0], &q_PrepAndExecRequests.front().CQLStatement[0], sizeof(s_Thr_PrepAndExec.CQLStatement));
+                            s_Thr_PrepAndExec.origin = q_PrepAndExecRequests.front().origin;
+                            PrepAndExecReq_number++;
+                            q_PrepAndExecRequests.pop();
+                            l_Thr_PrepAndExec[i] = s_Thr_PrepAndExec;
+                        }
                     }
-                    else if (s_Thr_PrepAndExec.head[4] == _EXECUTE_STATEMENT) {
-                        //std::cout << "== _EXECUTE_STATEMENT" << std::endl;
-                        memcpy(&tableName[0], &s_Thr_PrepAndExec.CQLStatement[27], 24);
-                        for (tableNameSize = 0; tableNameSize < 24; tableNameSize++) {
-                            if (tableName[tableNameSize] == 0x00)
-                                break;
+
+                    mtx_accessQueue.unlock();
+
+                    for (int h = 0; h < PrepAndExecReq_number; h++) {
+                        if (l_Thr_PrepAndExec[h].head[4] == _PREPARE_STATEMENT) {
+                            //std::cout << "== _PREPARE_STATEMENT" << std::endl;
+                            memcpy(&ResponseToPrepare_INSERT[2], &l_Thr_PrepAndExec[h].head[2], 2);
+                            write(l_Thr_PrepAndExec[h].origin, ResponseToPrepare_INSERT, sizeof(ResponseToPrepare_INSERT));
+                            //std::cout << "WRITED _PREPARE_STATEMENT_INSERT" << std::endl;
                         }
-                        cursor = tableNameSize + 27;
-                        paramValues[0] = tableName;
-                        // paramValues_repl[0] = tableName;
-                        //std::cout << "tableName: " << std::string(tableName) << std::endl;
-                        for (int i = 0; i < 10; i++) {
-                            memcpy(&fieldDataExecute[i], &s_Thr_PrepAndExec.CQLStatement[cursor + 4], sizeof(fieldDataExecute[i]) + 2);
-                            paramValues[i + 1] = fieldDataExecute[i];
-                            // std::cout << "paramValues[i+1]: " << std::string(paramValues[i + 1]) << std::endl;
-                            cursor += 104;
-                        }
-                        //std::cout << std::string(command) << std::endl;
-
-                        //ASYNC
-                        //ADDED
-                        PQsendQueryParams(connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
-                        /*if (arg != NULL)      //CHANGED
-                        {
-                            PQsendQueryParams(replic1_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
-                            PQsendQueryParams(replic2_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
-                        }*/
-
-                        if (PQresultStatus(PQgetResult(connPrepState)) == PGRES_COMMAND_OK)
-                        {
-                            memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
-                            write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
-                            PQclear(PQgetResult(connPrepState));
-                        }
-                        /*if(PQresultStatus(PQgetResult(replic1_connPrepState)) == PGRES_COMMAND_OK)        //CHANGED
-                            PQclear(PQgetResult(replic1_connPrepState));
-
-                        if(PQresultStatus(PQgetResult(replic2_connPrepState)) == PGRES_COMMAND_OK)
-                            PQclear(PQgetResult(replic2_connPrepState));*/
-                            //ENDADDED
-
-                            //SYNC
-                            /*resCreateTable = PQexecParams(connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
-
-                            if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
-                            {
-                                PQclear(resCreateTable);
-                                if (arg != NULL)
-                                {
-                                    // std::cout << std::string(command_sub) << std::endl;
-                                    // resCreateTable_repl = PQexecParams(replic1_connPrepState, command_sub, 1, (const Oid*)NULL, paramValues_repl, NULL, NULL, 0);
-                                    resCreateTable_repl = PQexecParams(replic1_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
-                                    if (PQresultStatus(resCreateTable_repl) != PGRES_COMMAND_OK)
-                                        fprintf(stderr, "LISTEN command REPLIC 1 failed: %s", PQerrorMessage(replic1_connPrepState));
-                                    PQclear(resCreateTable_repl);
-
-                                    //REPLICATION FACTOR
-
-                                    //ADDED
-                                    // resCreateTable_repl = PQexecParams(replic2_connPrepState, command_sub, 1, (const Oid*)NULL, paramValues_repl, NULL, NULL, 0);
-                                    resCreateTable_repl = PQexecParams(replic2_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
-                                    if (PQresultStatus(resCreateTable_repl) != PGRES_COMMAND_OK)
-                                        fprintf(stderr, "LISTEN command REPLIC 2 failed: %s", PQerrorMessage(replic2_connPrepState));
-                                    PQclear(resCreateTable_repl);
-                                    //ENDADDED
-                                }
+                        else if (l_Thr_PrepAndExec[h].head[4] == _EXECUTE_STATEMENT) {
+                            //std::cout << "== _EXECUTE_STATEMENT" << std::endl;
+                            memcpy(&tableName[0], &l_Thr_PrepAndExec[h].CQLStatement[27], 24);
+                            for (tableNameSize = 0; tableNameSize < 24; tableNameSize++) {
+                                if (tableName[tableNameSize] == 0x00)
+                                    break;
                             }
-                            else
+                            cursor = tableNameSize + 27;
+                            paramValues[0] = tableName;
+                            // paramValues_repl[0] = tableName;
+                            //std::cout << "tableName: " << std::string(tableName) << std::endl;
+                            for (int i = 0; i < 10; i++) {
+                                memcpy(&fieldDataExecute[i], &l_Thr_PrepAndExec[h].CQLStatement[cursor + 4], sizeof(fieldDataExecute[i]) + 2);
+                                paramValues[i + 1] = fieldDataExecute[i];
+                                // std::cout << "paramValues[i+1]: " << std::string(paramValues[i + 1]) << std::endl;
+                                cursor += 104;
+                            }
+                            //std::cout << std::string(command) << std::endl;
+
+                            //ASYNC
+                            //ADDED
+                            PQsendQueryParams(connPrepState[h], command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+                            /*if (arg != NULL)      //CHANGED
                             {
-                                fprintf(stderr, "LISTEN command failed: %s", PQerrorMessage(connPrepState));
-                                PQclear(resCreateTable);
+                                PQsendQueryParams(replic1_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+                                PQsendQueryParams(replic2_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
                             }
                             //MOVED
                             memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
                             write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);*/
                             //std::cout << "WRITED _EXECUTE_STATEMENT_INSERT" << std::endl;
-                        for (int i = 0; i < 10; i++)
-                            memset(&fieldDataExecute[i], 0x00, sizeof(fieldDataExecute[i]));
-                        //ENDMOVED
-                        memset(tableName, 0x00, sizeof(tableName));
+                            for (int i = 0; i < 10; i++)
+                                memset(&fieldDataExecute[i], 0x00, sizeof(fieldDataExecute[i]));
+                            //ENDMOVED
+                            memset(tableName, 0x00, sizeof(tableName));
+                        }
                     }
 
-                    /*if (bl_firstThread) {
+                    for (int h = 0; h < PrepAndExecReq_number; h++) {
+                        if (PQresultStatus(PQgetResult(connPrepState[h])) == PGRES_COMMAND_OK)
+                        {
+                            memcpy(&ResponseToExecute_INSERT[2], &l_Thr_PrepAndExec[h].head[2], 2);
+                            write(l_Thr_PrepAndExec[h].origin, &ResponseToExecute_INSERT, 13);
+                            PQclear(PQgetResult(connPrepState[h]));
+                        }
+                    }
+                    PrepAndExecReq_number = 0;
+                    /*if(PQresultStatus(PQgetResult(replic1_connPrepState)) == PGRES_COMMAND_OK)        //CHANGED
+                        PQclear(PQgetResult(replic1_connPrepState));
+
+                    if(PQresultStatus(PQgetResult(replic2_connPrepState)) == PGRES_COMMAND_OK)
+                        PQclear(PQgetResult(replic2_connPrepState));*/
+                        //ENDADDED
+
+                        //SYNC
+                        /*resCreateTable = PQexecParams(connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+
+                        if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
+                        {
+                            PQclear(resCreateTable);
+                            if (arg != NULL)
+                            {
+                                // std::cout << std::string(command_sub) << std::endl;
+                                // resCreateTable_repl = PQexecParams(replic1_connPrepState, command_sub, 1, (const Oid*)NULL, paramValues_repl, NULL, NULL, 0);
+                                resCreateTable_repl = PQexecParams(replic1_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+                                if (PQresultStatus(resCreateTable_repl) != PGRES_COMMAND_OK)
+                                    fprintf(stderr, "LISTEN command REPLIC 1 failed: %s", PQerrorMessage(replic1_connPrepState));
+                                PQclear(resCreateTable_repl);
+
+                                //REPLICATION FACTOR
+
+                                //ADDED
+                                // resCreateTable_repl = PQexecParams(replic2_connPrepState, command_sub, 1, (const Oid*)NULL, paramValues_repl, NULL, NULL, 0);
+                                resCreateTable_repl = PQexecParams(replic2_connPrepState, command, 11, (const Oid*)NULL, paramValues, NULL, NULL, 0);
+                                if (PQresultStatus(resCreateTable_repl) != PGRES_COMMAND_OK)
+                                    fprintf(stderr, "LISTEN command REPLIC 2 failed: %s", PQerrorMessage(replic2_connPrepState));
+                                PQclear(resCreateTable_repl);
+                                //ENDADDED
+                            }
+                        }
+                        else
+                        {
+                            fprintf(stderr, "LISTEN command failed: %s", PQerrorMessage(connPrepState));
+                            PQclear(resCreateTable);
+                        }
+
+                    if (bl_firstThread) {
                         iter_refreshPub++;
                         if (iter_refreshPub > _ITER_FOR_PUB_REFRESH) {
                             while (!mtx_accessQueue.try_lock()) {}
