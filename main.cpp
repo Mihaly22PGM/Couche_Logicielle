@@ -13,7 +13,7 @@ typedef int SOCKET;
 #define _QUERY_STATEMENT 0x07
 #define _PREPARE_STATEMENT 0x09
 #define _EXECUTE_STATEMENT 0x0a
-#define _THREDS_EXEC_NUMBER 4
+#define _THREDS_EXEC_NUMBER 6
 #define _REDIRECTING_PORT 8042
 
 #pragma region Structures
@@ -115,9 +115,7 @@ pthread_t th_PrepExec_SLAVE;
 
 server actual_server;
 /*server subscriber1_server;  //CHANGED
-
 //REPLICATION FACTOR
-
 //ADDED
 server subscriber2_server;*/
 //ENDADDED
@@ -137,8 +135,8 @@ server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };*/
 server server_A = { "RWCS_vServer1", 0, "192.168.82.52" };
-server server_B = { "RWCS_vServer4", 1, "192.168.82.56" };
-server server_C = { "RWCS_vServer3", 2, "192.168.82.53" };
+server server_B = { "RWCS_vServer4", 1, "192.168.82.55" };
+server server_C = { "RWCS_vServer3", 2, "192.168.82.59" };
 /*server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
 server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };*/
@@ -853,9 +851,7 @@ void server_identification()
         {
             actual_server = l_servers[i];
             /*subscriber1_server = l_servers[(i + 1) % server_count];     //CHANGED
-
             //REPLICATION FACTOR
-
             //ADDED
             subscriber2_server = l_servers[(i + 2) % server_count];*/
             //ENDADDED

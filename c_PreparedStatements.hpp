@@ -55,7 +55,7 @@ struct replication_relation     //ensemble de deux serveurs pour la replication
 
 void* ConnPGSQLPrepStatements(void*);
 void AddToQueue(PrepAndExecReq);
-void PrepExecStatement(PGconn* [2], void* arg = NULL);
+void PrepExecStatement(PGconn*, void* arg = NULL);
 // void PrepExecStatement(PGconn*, PGconn*, void* arg = NULL);
 void Ending();
 #endif
