@@ -1,8 +1,3 @@
-\connect template1
-DROP DATABASE IF EXISTS postgres;
-CREATE DATABASE postgres;
-\connect postgres
-\set AUTOCOMMIT on
 CREATE OR REPLACE PROCEDURE pub_insert(_tab_nam IN varchar(24), _f1 IN char(100), _f0 IN char(100), _f7 IN char(100), _f6 IN char(100), _f9 IN char(100), _f8 IN char(100), _f3 IN char(100), _f2 IN char(100), _f5 IN char(100), _f4 IN char(100))
 LANGUAGE plpgsql
 AS $myproc$

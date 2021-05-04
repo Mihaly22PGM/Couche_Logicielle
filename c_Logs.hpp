@@ -10,7 +10,7 @@
 #include <fstream>
 #include <string.h>
 
-enum LogStatus {INFO, WARNING, ERROR};
+enum LogStatus { INFO, WARNING, ERROR };
 void logs(std::string, LogStatus LogStatusText = LogStatus::INFO);
 void initClock(std::chrono::high_resolution_clock::time_point);
 void timestamp(std::string, std::chrono::high_resolution_clock::time_point);

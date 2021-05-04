@@ -15,46 +15,47 @@
 #include <sstream>
 #include "libpq-fe.h"
 #include "c_Logs.hpp"
-#include "c_Socket.hpp"
 
-#define _NPOS std::string::npos
-#define _OPTIONS_STATEMENT 0x05
-#define _QUERY_STATEMENT 0x07
-#define _PREPARE_STATEMENT 0x09
-#define _EXECUTE_STATEMENT 0x0a
-
-struct PreparedReqStock{
+struct PreparedReqStock {
     char ID[16];
     char order[10];
 };
-struct PreparedStatAndResponse{
-    PGresult *PGReq;
+struct PreparedStatAndResponse {
+    PGresult* PGReq;
     std::string Response;
 };
 struct SQLPrepRequests {
     char stream[2];
     std::string request;
 };
+struct PrepAndExecReq {
+    unsigned char head[13];
+    unsigned char CQLStatement[2048];
+    int origin;
+};
+
 struct server
 {
     std::string server_name;
     int server_id;
     std::string server_ip_address;
 };
-struct replication_relation     //ensemble de deux serveurs pour la réplication
+
+struct replication_relation     //ensemble de deux serveurs pour la replication
 {
     server publisher;
-    server subscriber;
-    int th_num;
-};
-struct PrepAndExecReq{
-    unsigned char head[13];
-    unsigned char CQLStatement[2048];
-    int origin;
+    server subscriber1;     //CHANGED
+
+    //REPLICATION FACTOR
+
+    //ADDED
+    server subscriber2;
+    //ENDADDED
 };
 
 void* ConnPGSQLPrepStatements(void*);
 void AddToQueue(PrepAndExecReq);
-void PrepExecStatement(PGconn*, void* arg = NULL);
+void PrepExecStatement(PGconn* [2], void* arg = NULL);
+// void PrepExecStatement(PGconn*, PGconn*, void* arg = NULL);
 void Ending();
 #endif

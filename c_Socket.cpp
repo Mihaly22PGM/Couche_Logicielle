@@ -7,8 +7,8 @@ int portClients = 9042;
 struct sockaddr_in serv_addr;
 char buffClient[1024];
 bool bl_ContinueThreadSocket = true;
-int fr_lengthPGSQL[] = {9, 9, 162, 691,	714, 7240, 7240, 14480, 14118, 668, 9, 691};
-int fr_lengthBench[] = {9, 9, 162, 739, 779, 117, 7240, 7240, 4167, 176, 714, 14480, 9435, 162, 739, 9, 64};
+int fr_lengthPGSQL[] = { 9, 9, 162, 691,	714, 7240, 7240, 14480, 14118, 668, 9, 691 };
+int fr_lengthBench[] = { 9, 9, 162, 739, 779, 117, 7240, 7240, 4167, 176, 714, 14480, 9435, 162, 739, 9, 64 };
 
 unsigned char fr_connectionPSQL[][15000] = {
 	{0x84, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00},
@@ -26,7 +26,7 @@ unsigned char fr_connectionPSQL[][15000] = {
 	0x73, 0x73, 0x00, 0x10, 0x00, 0x0e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x5f, 0x76, 0x65, 0x72,
 	0x73, 0x69, 0x6f, 0x6e, 0x00, 0x0c, 0x00, 0x06, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x73, 0x00, 0x22,
 	0x00, 0x0d, 0x00, 0x00, 0x00, 0x00},
- 
+
 	{0x84, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x02, 0xaa, 0x00, 0x00, 0x00,
 	0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x12, 0x00, 0x06, 0x73, 0x79, 0x73, 0x74, 0x65,
 	0x6d, 0x00, 0x05, 0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x00, 0x03, 0x6b, 0x65, 0x79, 0x00, 0x0d, 0x00,
@@ -5835,75 +5835,75 @@ unsigned char fr_connectionBench[][15000] = {
 
 #pragma region Fonctions
 
-SOCKET CreateSocket(){
-    SOCKET sockServer = socket(AF_INET, SOCK_STREAM, 0);
-    memset(&serv_addr, '0', sizeof(serv_addr));
+SOCKET CreateSocket() {
+	SOCKET sockServer = socket(AF_INET, SOCK_STREAM, 0);
+	memset(&serv_addr, '0', sizeof(serv_addr));
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serv_addr.sin_port = htons(portClients);
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	serv_addr.sin_port = htons(portClients);
 
-    bind(sockServer, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+	bind(sockServer, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 	return sockServer;
 }
 
-SOCKET INITSocket(SOCKET sockServer, bool modeBench=false){
+SOCKET INITSocket(SOCKET sockServer, bool modeBench = false) {
 	listen(sockServer, 10);
-    sockClient = accept(sockServer, (struct sockaddr*)NULL,NULL);
-    int i =0;
-	if(modeBench){
-		while(i<15){
-			int server = recv(sockClient, buffClient, sizeof(buffClient),0);
-			if(server>0){
-        if(i==3){
-			      memcpy(&fr_connectionBench[i][2], &buffClient[2], 2);
-			  }
-				write(sockClient, fr_connectionBench[i],fr_lengthBench[i]);
+	sockClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
+	int i = 0;
+	if (modeBench) {
+		while (i < 15) {
+			int server = recv(sockClient, buffClient, sizeof(buffClient), 0);
+			if (server > 0) {
+				if (i == 3) {
+					memcpy(&fr_connectionBench[i][2], &buffClient[2], 2);
+				}
+				write(sockClient, fr_connectionBench[i], fr_lengthBench[i]);
 				i++;
 			}
-			if(i == 2){
-				write(sockClient, fr_connectionBench[i],fr_lengthBench[i]);
+			if (i == 2) {
+				write(sockClient, fr_connectionBench[i], fr_lengthBench[i]);
 				i++;
 			}
-			else if(i==5){
-				for (int j=0; j<8; j++){
+			else if (i == 5) {
+				for (int j = 0; j < 8; j++) {
 					write(sockClient, fr_connectionBench[i], fr_lengthBench[i]);
 					i++;
 				}
 			}
-			else if(i==14){
+			else if (i == 14) {
 				write(sockClient, fr_connectionBench[i], fr_lengthBench[i]);
 				i++;
 				socketDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
 			}
 		}
-		while(i<17){
-			int server2 = recv(socketDataClient, buffClient, sizeof(buffClient),0);
-			if(server2>0){
-				write(socketDataClient, fr_connectionBench[i],fr_lengthBench[i]);
+		while (i < 17) {
+			int server2 = recv(socketDataClient, buffClient, sizeof(buffClient), 0);
+			if (server2 > 0) {
+				write(socketDataClient, fr_connectionBench[i], fr_lengthBench[i]);
 				i++;
 			}
 		}
 	}
-	else{
-		while(i<9){
-			int server = recv(sockClient, buffClient, sizeof(buffClient),0);
-			if(server>0){
-				write(sockClient, fr_connectionPSQL[i],fr_lengthPGSQL[i]);
+	else {
+		while (i < 9) {
+			int server = recv(sockClient, buffClient, sizeof(buffClient), 0);
+			if (server > 0) {
+				write(sockClient, fr_connectionPSQL[i], fr_lengthPGSQL[i]);
 				i++;
 			}
-			if(i==5){
-				for (int j=0; j<5; j++){
+			if (i == 5) {
+				for (int j = 0; j < 5; j++) {
 					write(sockClient, fr_connectionPSQL[i], fr_lengthPGSQL[i]);
 					i++;
 				}
 				socketDataClient = accept(sockServer, (struct sockaddr*)NULL, NULL);
 			}
 		}
-		while(i<12){
-			int server2 = recv(socketDataClient, buffClient, sizeof(buffClient),0);
-			if(server2>0){
-				write(socketDataClient, fr_connectionPSQL[i],fr_lengthPGSQL[i]);
+		while (i < 12) {
+			int server2 = recv(socketDataClient, buffClient, sizeof(buffClient), 0);
+			if (server2 > 0) {
+				write(socketDataClient, fr_connectionPSQL[i], fr_lengthPGSQL[i]);
 				i++;
 			}
 		}
@@ -5911,38 +5911,37 @@ SOCKET INITSocket(SOCKET sockServer, bool modeBench=false){
 	return socketDataClient;
 }
 
-in_addr GetIPAdress(){		//TODO repair or delete
+in_addr GetIPAdress() {		//TODO repair or delete
 	return serv_addr.sin_addr;
 }
 
-void* TraitementFrameClient(void*){
-    int server;
-    while(bl_ContinueThreadSocket){
+void* TraitementFrameClient(void*) {
+	int server;
+	while (bl_ContinueThreadSocket) {
 		server = 0;
-		server = recv(sockClient, buffClient, sizeof(buffClient),0);
-		if(server > 0){
+		server = recv(sockClient, buffClient, sizeof(buffClient), 0);
+		if (server > 0) {
 			fr_connectionPSQL[13][2] = buffClient[2];
 			fr_connectionPSQL[13][3] = buffClient[3];
 			write(sockClient, fr_connectionPSQL[13], fr_lengthPGSQL[13]);
 		}
-		else{
+		else {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
-    }
+	}
 	pthread_exit(NULL);
 }
 
-void StopSocketThread(){
+void StopSocketThread() {
 	bl_ContinueThreadSocket = false;
 	return;
 }
 
-SOCKET GetSocket(){
+SOCKET GetSocket() {
 	return socketDataClient;
 }
 
-SOCKET GetSocketConn(){
+SOCKET GetSocketConn() {
 	return sockClient;
 }
 #pragma endregion Fonctions
-
