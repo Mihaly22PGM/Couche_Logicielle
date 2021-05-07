@@ -5915,23 +5915,6 @@ in_addr GetIPAdress() {		//TODO repair or delete
 	return serv_addr.sin_addr;
 }
 
-void* TraitementFrameClient(void*) {
-	int server;
-	while (bl_ContinueThreadSocket) {
-		server = 0;
-		server = recv(sockClient, buffClient, sizeof(buffClient), 0);
-		if (server > 0) {
-			fr_connectionPSQL[13][2] = buffClient[2];
-			fr_connectionPSQL[13][3] = buffClient[3];
-			write(sockClient, fr_connectionPSQL[13], fr_lengthPGSQL[13]);
-		}
-		else {
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		}
-	}
-	pthread_exit(NULL);
-}
-
 void StopSocketThread() {
 	bl_ContinueThreadSocket = false;
 	return;
