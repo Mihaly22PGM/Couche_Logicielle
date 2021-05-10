@@ -15,19 +15,8 @@
 #include <sstream>
 #include "libpq-fe.h"
 #include "c_Logs.hpp"
+#include "c_Socket.hpp"
 
-struct PreparedReqStock {
-    char ID[16];
-    char order[10];
-};
-struct PreparedStatAndResponse {
-    PGresult* PGReq;
-    std::string Response;
-};
-struct SQLPrepRequests {
-    char stream[2];
-    std::string request;
-};
 struct PrepAndExecReq {
     unsigned char head[13];
     unsigned char CQLStatement[2048];
@@ -41,21 +30,8 @@ struct server
     std::string server_ip_address;
 };
 
-struct replication_relation     //ensemble de deux serveurs pour la replication
-{
-    server publisher;
-    server subscriber1;     //CHANGED
-
-    //REPLICATION FACTOR
-
-    //ADDED
-    server subscriber2;
-    //ENDADDED
-};
-
 void* ConnPGSQLPrepStatements(void*);
 void AddToQueue(PrepAndExecReq);
 void PrepExecStatement(PGconn*, void* arg = NULL);
-// void PrepExecStatement(PGconn*, PGconn*, void* arg = NULL);
 void Ending();
 #endif

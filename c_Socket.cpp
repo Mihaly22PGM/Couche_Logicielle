@@ -7,7 +7,7 @@ int portClients = 9042;
 struct sockaddr_in serv_addr;
 char buffClient[1024];
 bool bl_ContinueThreadSocket = true;
-int fr_lengthPGSQL[] = { 9, 9, 162, 691,	714, 7240, 7240, 14480, 14118, 668, 9, 691 };
+int fr_lengthPGSQL[] = { 9, 9, 162, 691, 714, 7240, 7240, 14480, 14118, 668, 9, 691 };
 int fr_lengthBench[] = { 9, 9, 162, 739, 779, 117, 7240, 7240, 4167, 176, 714, 14480, 9435, 162, 739, 9, 64 };
 
 unsigned char fr_connectionPSQL[][15000] = {

@@ -1,0 +1,39 @@
+apt remove postgresql*
+apt autoremove
+rm -rf /etc/postgresql/
+rm -rf /var/lib/postgresql/
+mkdir /etc/postgresql
+mkdir /etc/postgresql/12/
+mkdir /etc/postgresql/12/main
+mkdir /run/postgresql
+
+apt-get install build-essential libreadline-dev zlib1g-dev flex bison libxml2-dev libxslt-dev libssl-dev libxml2-utils xsltproc
+wget https://ftp.postgresql.org/pub/source/v12.6/postgresql-12.6.tar.bz2
+tar -xvf postgresql-12.6.tar.bz2
+cd postgresql-12.6/
+./configure --with-blocksize=2 --with-wal-blocksize=2 --datadir=/usr/local/pgsql/12/main
+make -j8
+make install -j8
+
+chown postgres:postgres /etc/postgresql/12/main
+chown postgres:postgres /usr/local/pgsql/12/main/
+echo 'export PATH=$PATH:/usr/local/pgsql/bin' > /etc/profile.d/postgres.sh
+
+su - postgres
+initdb -D /etc/postgresql/12/main/
+pg_ctl -D /etc/postgresql/12/main/ -l logs start
+createdb postgres
+
+reboot
+
+systemctl unmask postgresql.service
+systemctl restart postgresql.service
+chmod 700 /usr/local/pgsql/12/main
+
+sudo mkdir /var/run/postgresql
+sudo chown postgres: /var/run/postgresql/
+pg_ctl -D /etc/postgresql/12/main/ start
+
+Configurer les fichiers de config après... Voir README global
+
+//////////sudo apt install postgresql-common

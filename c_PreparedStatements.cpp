@@ -1,5 +1,4 @@
 #include "c_PreparedStatements.hpp"
-#include "c_Socket.hpp"
 
 #define _PREPARE_STATEMENT 0x09
 #define _EXECUTE_STATEMENT 0x0a
@@ -104,6 +103,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                         }
                         cursor = tableNameSize + 27;
                         paramValues[0] = tableName;
+                        logs(tableName);
                         for (int i = 0; i < 10; i++) {
                             memcpy(&fieldDataExecute[i], &s_Thr_PrepAndExec.CQLStatement[cursor + 4], sizeof(fieldDataExecute[i]) + 2);
                             paramValues[i + 1] = fieldDataExecute[i];
