@@ -15,6 +15,7 @@ typedef int SOCKET;
 #define _THREDS_EXEC_NUMBER 6
 #define _REDIRECTING_PORT 8042
 #define _CONNEXIONS 10
+#define _WARNING_BUFFER 100000
 
 #pragma region Structures
 
@@ -52,11 +53,14 @@ unsigned int sizeheader = 0;
 unsigned int sizeheader_REPL = 0;
 unsigned int server_count = 0;
 unsigned int master_count = 0;
+unsigned int datatransfert = 0;
+unsigned int datatransfert_REPL[_CONNEXIONS];
 
 ssize_t ServerSock = 0;
 
 unsigned char buffData[131072];
 unsigned char test[131072];
+unsigned char PrevTest[131072];
 unsigned char header[13];
 unsigned char frameData[131072];
 unsigned char partialRequest[2048];
@@ -66,9 +70,9 @@ unsigned char header_REPL[13];
 unsigned char frameData_REPL[131072];
 unsigned char partialRequest_REPL[_CONNEXIONS][2048];
 unsigned char partialHeader_REPL[_CONNEXIONS][13];
-unsigned char UseResponse[] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62 };     //Automatic response for USE requests
+unsigned char UseResponse[19] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62 };     //Automatic response for USE requests
 unsigned char ResponseExecute[13] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };                                     //Prototype for Execute requests
-unsigned char UseResponse_REPL[] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62 };     //Automatic response for USE requests
+unsigned char UseResponse_REPL[19] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x79, 0x63, 0x73, 0x62 };     //Automatic response for USE requests
 unsigned char ResponseExecute_REPL[13] = { 0x84, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01 };                                     //Prototype for Execute requests
 
 //Sockets - Expand to int 
@@ -91,8 +95,8 @@ PrepAndExecReq s_PrepAndExec_ToSend_REPL;
 server actual_server;
 server server_to_redirect;
 //Server List
-server server_A = { "RWCS_vServer1", 0, "192.168.82.63" };
-server server_B = { "RWCS_vServer2", 1, "192.168.82.64" };
+server server_A = { "RWCS_vServer1", 0, "192.168.82.52" };
+server server_B = { "RWCS_vServer2", 1, "192.168.82.53" };
 //server server_C = { "RWCS_vServer3", 2, "192.168.82.59" };
 /*server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
 server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
@@ -128,8 +132,11 @@ int main(int argc, char* argv[])
     //Initialization
     server_count = l_servers.size();
     master_count = server_count;
-    for(unsigned int i = 0; i<sizeof(bl_partialRequest_REPL); i++){
+    memset(&PrevTest[0], 0, sizeof(PrevTest));
+
+    for(unsigned int i = 0; i<_CONNEXIONS; i++){
         bl_partialRequest_REPL[i] = false;
+        datatransfert_REPL[i] = 0;
     }
     bl_Load = true;     //Load mode forced
     bl_UseBench = true; //bench mode forced
@@ -226,8 +233,8 @@ int main(int argc, char* argv[])
         ServerSock = 0;
         ServerSock = recv(sockDataClient, &buffData[0], sizeof(buffData), 0);
         if (ServerSock > 0) {
-            if(ServerSock>131000){
-                logs("Normal ça?", WARNING);
+            if(ServerSock>_WARNING_BUFFER){
+                logs("Buffer full! Ou presque!", WARNING);
                 printf("Check if not too much data : 0x%x 0x%x 0x%x 0x%x",buffData[131068],buffData[131069],buffData[131070],buffData[131071]);
             }
             TraitementFrameData(buffData);
@@ -249,48 +256,34 @@ int main(int argc, char* argv[])
 
 #pragma region Requests
 void TraitementFrameData(unsigned char buffofdata[131072]) {
-        bool bl_break_if = false;
         memset(&test[0], 0, sizeof(test));
         memset(&header[0], 0, sizeof(header));
         sommeSize = 0;
         bl_lastRequestFrame = false;
         if (bl_partialRequest) {
+            if(ServerSock+datatransfert+sizeheader>_WARNING_BUFFER){
+                logs("Buffer quasi full!!", WARNING);
+            }
             if (partialHeader[4] == _EXECUTE_STATEMENT)
                 sizeheader = 9;
             else if(partialHeader[4] == _PREPARE_STATEMENT)
                 sizeheader = 13;
             else{
-                bl_break_if = true;
                 logs("Casseee", WARNING);          
                 memcpy(&test[0], &buffofdata[0], ServerSock);
             }
-            if(!bl_break_if){
-                memcpy(&test[0], &partialHeader[0], sizeheader);
-                memcpy(&test[sizeheader], &partialRequest[0], sizeof(partialRequest) - sizeheader);
-                for (unsigned int i = sizeheader; i < sizeof(partialRequest); i++) {
-                    if (test[i] == 0x00 && test[i + 1] == 0x00 && test[i + 2] == 0x00 && test[i + 3] == 0x00) {
-                        if (buffofdata[0] == 0x00) {
-                            for (int j = 0; j < 2; j++) {
-                                if (buffofdata[j + 1] != 0) { 
-                                i++;
-                                } //If frame is cut between multiple 0x00, need always 3 0x00 to separate exec champs
-                            }
-                        }
-                        else if (buffofdata[0] == 0x64 && buffofdata[102] == 0x00){ //All champs starts with 0000 000d to separate them
-                            i += 3;
-                        }
-                        memcpy(&test[i], buffofdata, sizeof(test) - i);
-                        i = sizeof(partialRequest);
-                    }
-                }
-            }
-            bl_break_if = false;
+            memcpy(&test[0], &partialHeader[0], sizeheader);
+            memcpy(&test[sizeheader], &partialRequest[0], datatransfert);
+            memcpy(&test[datatransfert+sizeheader], &buffofdata[0], ServerSock);
+            ServerSock += datatransfert + sizeheader;
             bl_partialRequest = false;
         }
         else {
             memcpy(&test[0], &buffofdata[0], ServerSock);     //COPY frame if previous frame is not partial
         }
         while (!bl_lastRequestFrame && !bl_partialRequest) {
+            if(sommeSize>_WARNING_BUFFER)
+                logs("Buffer quasi full attention!!", WARNING);
             memcpy(&header[0], &test[sommeSize], 13);
             memcpy(&s_Requests.opcode[0], &header[4], 1);
             memcpy(&s_Requests.stream[0], &header[2], 2);
@@ -305,9 +298,8 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                 memcpy(s_Requests.request, &test[9 + sommeSize], s_Requests.size);
                 sommeSize += s_Requests.size + 9;
             }
-            if (test[sommeSize - 1] == 0x00 && test[sommeSize - 2] == 0x00 && test[sommeSize - 3] == 0x00) {
+            if (sommeSize>ServerSock)
                 bl_partialRequest = true;
-            }
             if (!bl_partialRequest) {
                 switch (s_Requests.opcode[0])
                 {
@@ -342,11 +334,12 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                     }
                     memset(s_PrepAndExec_ToSend.head, 0, sizeof(s_PrepAndExec_ToSend.head));
                     memset(s_PrepAndExec_ToSend.CQLStatement, 0, sizeof(s_PrepAndExec_ToSend.CQLStatement));
-                    if (test[sommeSize] != 0x04)        //Checking last frame
-                        bl_lastRequestFrame = true;
+                    if (sommeSize == ServerSock){        //Checking last frame
+                        bl_lastRequestFrame = true; 
+                    }
                     break;
                 case _PREPARE_STATEMENT:
-                    if (test[sommeSize] != 0x04)        //Checking last frame
+                    if (sommeSize == ServerSock)        //Checking last frame
                         bl_lastRequestFrame = true;
                     memcpy(s_PrepAndExec_ToSend.head, header, sizeof(header));
                     memcpy(s_PrepAndExec_ToSend.CQLStatement, s_Requests.request, sizeof(s_Requests.request));
@@ -358,29 +351,28 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                     break;
                 default:
                     bl_lastRequestFrame = true;
+                    printf("Pas bon ça\r\n");
                     logs("TraitementFrameData() : Type of request unknown : " + std::string((char*)s_Requests.request), ERROR);
                     break;
                 }    
             }
             else {
-                if (s_Requests.opcode[0] == 0x0a) {
-                    if (s_Requests.request[91] == 0x13 || s_Requests.request[91] == 0x88 || s_Requests.request[92] == 0x05 || s_Requests.request[101] == 0xc0) {
-                        printf("Mouais\r\n");
-                        bl_partialRequest = false;
-                        memcpy(&ResponseExecute[2], &s_Requests.stream[0], 2);
-                        write(GetSocket(), ResponseExecute, sizeof(ResponseExecute));
-                        printf("\r\n");
-                    } 
-                }
                 if (bl_partialRequest) {
+                    datatransfert = s_Requests.size-(sommeSize-ServerSock);  //Size diff excluding header size
                     memset(partialRequest, 0, sizeof(partialRequest));
                     memset(partialHeader, 0, sizeof(partialHeader));
-                    memcpy(&partialRequest[0], &s_Requests.request[0], sizeof(partialRequest));
+                    if(s_Requests.request[datatransfert+1] !=0x0 || datatransfert > 2047){
+                        logs("Erreur ici?\r\n");
+                        printf("Datatransfert %d\r\n", datatransfert);
+                        printf("char : %c\r\n", s_Requests.request[datatransfert+1]);
+                    }
+                    memcpy(&partialRequest[0], &s_Requests.request[0],datatransfert);
                     memcpy(&partialHeader[0], &header[0], sizeof(partialHeader));
                 }
             }//Fin de requête
             memset(&s_Requests.request[0], 0, sizeof(s_Requests.request));
         }//Fin de frame
+        memcpy(&PrevTest[0], &test[0], sizeof(PrevTest));
         memset(&test[0], 0x00, sizeof(test));
         memset(&header[0], 0x00, sizeof(header));
 }
@@ -445,7 +437,6 @@ void* INITSocket_Redirection(void* arg)
 
     std::cout << "Connexion a tous les serveurs acceptees!" << std::endl;
     logs("Connexion des serveurs effectuée");
-    bool bl_break_if = false;
     ssize_t ByteSize_REPL = 0;
     while (bl_loop)
     {
@@ -455,8 +446,8 @@ void* INITSocket_Redirection(void* arg)
             ByteSize_REPL = recv(accepted_connections[zz], &buffer[zz][0], sizeof(buffer[zz]), 0);
             if (ByteSize_REPL > 0)
             {
-                if(ByteSize_REPL>131000){
-                    logs("Normal? Repl", WARNING);
+                if(ByteSize_REPL>_WARNING_BUFFER){
+                    logs("Buffer_REPL full?", WARNING);
                     printf("Check if not too much data : 0x%x 0x%x 0x%x 0x%x",buffer[zz][131068],buffer[zz][131069],buffer[zz][131070],buffer[zz][131071]);
                 }
                     memset(&test_REPL[0], 0, sizeof(test_REPL));
@@ -469,28 +460,13 @@ void* INITSocket_Redirection(void* arg)
                         else if(partialHeader_REPL[zz][4] == _PREPARE_STATEMENT)
                             sizeheader_REPL = 13;
                         else{
-                            bl_break_if = true;
                             logs("Ouch", WARNING);
                             memcpy(&test_REPL[0], &buffer[zz][0], ByteSize_REPL);
                         }
-                        if(!bl_break_if){
-                            memcpy(&test_REPL[0], &partialHeader_REPL[zz][0], sizeheader_REPL);
-                            memcpy(&test_REPL[sizeheader_REPL], &partialRequest_REPL[zz][0], sizeof(partialRequest_REPL[zz]) - sizeheader_REPL);
-                            for (unsigned int i = sizeheader_REPL; i < sizeof(partialRequest_REPL[zz]); i++) {
-                                if (test_REPL[i] == 0x0 && test_REPL[i + 1] == 0x0 && test_REPL[i + 2] == 0x0 && test_REPL[i + 3] == 0x0) {
-                                    if (buffer[zz][0] == 0x0) {
-                                        for (int j = 0; j < 2; j++) {
-                                            if (buffer[zz][j + 1] != 0) { i++; }  //If frame is cut between multiple 0x00, need always 3 0x00 to separate exec champs
-                                        }
-                                    }
-                                    else if (buffer[zz][0] == 0x64 && buffer[zz][102] == 0x00) //All champs starts with 0000 000d to separate them
-                                        i += 3;
-                                    memcpy(&test_REPL[i], buffer[zz], sizeof(buffer[zz]) - i);
-                                    i = sizeof(partialRequest_REPL[zz]);
-                                }
-                            }
-                        }
-                        bl_break_if = false;
+                        memcpy(&test_REPL[0], &partialHeader_REPL[zz][0], sizeheader_REPL);
+                        memcpy(&test_REPL[sizeheader_REPL], &partialRequest_REPL[zz][0], datatransfert_REPL[zz]);
+                        memcpy(&test_REPL[datatransfert_REPL[zz] + sizeheader_REPL], &buffer[zz][0], ByteSize_REPL);
+                        ByteSize_REPL += datatransfert_REPL[zz] + sizeheader_REPL;
                         bl_partialRequest_REPL[zz] = false;
                     }
                     else {
@@ -498,7 +474,7 @@ void* INITSocket_Redirection(void* arg)
                     }
                     memset(&buffer[zz][0], 0, ByteSize_REPL);
                     while (!bl_lastRequestFrame_REPL && !bl_partialRequest_REPL[zz]) {
-                        if(sommeSize_REPL>131000){
+                        if(sommeSize_REPL>_WARNING_BUFFER){
                             logs("Warning indiquant l'éventualité que TOUT RISQUE DE PETER!!!", WARNING);
                         }
                         memcpy(&header_REPL[0], &test_REPL[sommeSize_REPL], 13);
@@ -515,7 +491,7 @@ void* INITSocket_Redirection(void* arg)
                             memcpy(s_Requests_REPL.request, &test_REPL[9 + sommeSize_REPL], s_Requests_REPL.size);
                             sommeSize_REPL += s_Requests_REPL.size + 9;
                         }
-                        if (test_REPL[sommeSize_REPL - 1] == 0x00 && test_REPL[sommeSize_REPL - 2] == 0x00 && test_REPL[sommeSize_REPL - 3] == 0x00) {
+                        if (sommeSize_REPL>ByteSize_REPL) {
                             bl_partialRequest_REPL[zz] = true;
                         }
                         if (!bl_partialRequest_REPL[zz]) {
@@ -546,11 +522,11 @@ void* INITSocket_Redirection(void* arg)
                                 AddToQueue(s_PrepAndExec_ToSend_REPL);
                                 memset(s_PrepAndExec_ToSend_REPL.head, 0, sizeof(s_PrepAndExec_ToSend_REPL.head));
                                 memset(s_PrepAndExec_ToSend_REPL.CQLStatement, 0, sizeof(s_PrepAndExec_ToSend_REPL.CQLStatement));
-                                if (test_REPL[sommeSize_REPL] != 0x04)        //Checking last frame
+                                if (sommeSize_REPL == ByteSize_REPL)        //Checking last frame
                                     bl_lastRequestFrame_REPL = true;
                                 break;
                             case _PREPARE_STATEMENT:
-                                if (test_REPL[sommeSize_REPL] != 0x04)        //Checking last frame
+                                if (sommeSize_REPL == ByteSize_REPL)        //Checking last frame
                                     bl_lastRequestFrame_REPL = true;
                                 memcpy(s_PrepAndExec_ToSend_REPL.head, header_REPL, sizeof(header_REPL));
                                 memcpy(s_PrepAndExec_ToSend_REPL.CQLStatement, s_Requests_REPL.request, sizeof(s_Requests_REPL.request));
@@ -568,22 +544,19 @@ void* INITSocket_Redirection(void* arg)
                                 
                         }
                         else {
-                            if (s_Requests_REPL.opcode[0] == 0x0a) {
-                                if (s_Requests_REPL.request[91] == 0x13 || s_Requests_REPL.request[91] == 0x88 || s_Requests_REPL.request[92] == 0x05 || s_Requests_REPL.request[101] == 0xc0) {
-                                    printf("Mouais\r\n");
-                                    bl_partialRequest_REPL[zz] = false;
-                                    memcpy(&ResponseExecute_REPL[2], &s_Requests_REPL.stream[0], 2);
-                                    write(GetSocket(), ResponseExecute_REPL, sizeof(ResponseExecute_REPL));
-                                }
+                            datatransfert_REPL[zz] = s_Requests_REPL.size-(sommeSize_REPL-ByteSize_REPL);  //Size diff excluding header size
+                            memset(partialRequest_REPL, 0, sizeof(partialRequest_REPL));
+                            memset(partialHeader_REPL[zz], 0, sizeof(partialHeader_REPL[zz]));
+                            if(s_Requests_REPL.request[datatransfert_REPL[zz]+1] !=0x0 || datatransfert_REPL[zz] > 2047){
+                                logs("Erreur in datatransfert_REPL?", WARNING);
+                                logs("Erreur ici?\r\n");
+                                printf("Datatransfert %d\r\n", datatransfert_REPL[zz]);
+                                printf("char : %c\r\n", s_Requests_REPL.request[datatransfert_REPL[zz]+1]);
                             }
-                            if (bl_partialRequest_REPL[zz]) {
-                                memset(&partialRequest_REPL[zz], 0, sizeof(partialRequest_REPL[zz]));
-                                memset(&partialHeader_REPL[zz], 0, sizeof(partialHeader_REPL[zz]));
-                                memcpy(&partialRequest_REPL[zz][0], &s_Requests_REPL.request[0], sizeof(partialRequest_REPL[zz]));
-                                memcpy(&partialHeader_REPL[zz][0], &header_REPL[0], sizeof(partialHeader_REPL[zz]));
-                            }
-                            
+                            memcpy(&partialRequest_REPL[0], &s_Requests_REPL.request[0],datatransfert_REPL[zz]);
+                            memcpy(&partialHeader_REPL[zz][0], &header_REPL[0], sizeof(partialHeader_REPL[zz]));
                         }//Fin de requête
+
                         memset(&s_Requests_REPL.request[0], 0, sizeof(s_Requests_REPL.request));
                         
                     }//Fin de frame
