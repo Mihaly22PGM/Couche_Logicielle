@@ -1,4 +1,6 @@
 \connect template1
+SET statement_timeout = 0;
+SET lock_timeout = 0;
 DROP DATABASE IF EXISTS postgres;
 CREATE DATABASE postgres;
 \connect postgres
@@ -21,4 +23,22 @@ begin
 	(%11$L, %21$L);',
 	_tab_nam,'field0', 'field1','field2','field3','field4','field5','field6','field7','field8','field9', _f0,_f1,_f2,_f3,_f4,_f5,_f6,_f7,_f8,_f9);
 end;
+$myproc$;
+CREATE OR REPLACE PROCEDURE pub_select(_tab_nam IN varchar(24))
+LANGUAGE plpgsql                                                                                                     
+AS $myproc$                                                                                                          
+begin                                                                                                                        
+	EXECUTE format('SELECT * FROM %1$I;',                                                                                
+	_tab_nam);                                                                                                   
+end;                                                                                                                 
+$myproc$;                                                                                                            
+CREATE OR REPLACE PROCEDURE pub_update(_tab_nam IN varchar(24), _field IN varchar(6), _value IN char(100))           
+LANGUAGE plpgsql                                                                                                     
+AS $myproc$                                                                                                          
+begin                                                                                                                        
+	EXECUTE format('UPDATE %1$I                                                                                          
+	SET value = %3$L                                                                                                     
+	WHERE column_name = %2$L;',                                                                                          
+	_tab_nam, _field, _value);                                                                                   
+end;                                                                                                                 
 $myproc$;
