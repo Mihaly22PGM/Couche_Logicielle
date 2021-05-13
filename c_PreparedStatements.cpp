@@ -62,7 +62,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
     char select_req[] = "SELECT * FROM                         ;";
     // const char* paramValues_SELECT[1];
 
-    int nFields;
+    // int nFields;
 
     unsigned char full_text[15000];
 
@@ -72,8 +72,8 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                                             0x84, 0x00, 'x', 'x', 0x08, 0x00, 0x00, 'y', 'y', 0x00, 0x00, 0x00, 0x02, 0x00,
                                     0x00, 0x00, 0x05, 0x00, 0x00, 'z', 'z', 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
     const unsigned char perm_double_zero[] = { 0x00, 0x00 };
-    const unsigned char perm_column_separator[] = { 0x00, 0x0d };
-    const unsigned char perm_column_value_separation[4] = { 0x00, 0x00, 0x00, 0x01 };
+    // const unsigned char perm_column_separator[] = { 0x00, 0x0d };
+    // const unsigned char perm_column_value_separation[4] = { 0x00, 0x00, 0x00, 0x01 };
     const unsigned char perm_null_element[] = { 0xff, 0xff, 0xff, 0xff };
 
     const char* command_UPDATE;
@@ -106,13 +106,13 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
         0xed, 0x03, 0xd8, 0x08, 0x5b, 0x75, 0xf4, 0x31, 0x1f, 0x57, 0xc7, 0x34, 0x36, 0xd9, 0xbc, 0x00,
         0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x79,
         0x63, 0x73, 0x62, 0x00, 0x09, 0x75, 0x73, 0x65, 0x72, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x00, 0x04,
-        0x79, 0x5f, 0x69, 0x64, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x30, 0x00,
-        0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x31, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65,
-        0x6c, 0x64, 0x32, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x33, 0x00, 0x0d, 0x00,
-        0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x34, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64,
-        0x35, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x36, 0x00, 0x0d, 0x00, 0x06, 0x66,
-        0x69, 0x65, 0x6c, 0x64, 0x37, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x38, 0x00,
-        0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x39, 0x00, 0x0d, 0x00, 0x00, 0x00, 0x04, 0x00,
+        0x79, 0x5f, 0x69, 0x64, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x31, 0x00,
+        0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x30, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65,
+        0x6c, 0x64, 0x37, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x36, 0x00, 0x0d, 0x00,
+        0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x39, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64,
+        0x38, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x33, 0x00, 0x0d, 0x00, 0x06, 0x66,
+        0x69, 0x65, 0x6c, 0x64, 0x32, 0x00, 0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x35, 0x00,
+        0x0d, 0x00, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x34, 0x00, 0x0d, 0x00, 0x00, 0x00, 0x04, 0x00,
         0x00, 0x00, 0x00*/
 
         0x84, 0x00, 0x12, 0x40, 0x08, 0x00, 0x00, 0x00, 0xc2, 0x00, 0x00, 0x00, 0x04, 0x00, 0x10, 0xee,
@@ -267,89 +267,97 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                             case (0x30):      //field_0_
                                 memcpy(&ResponseToPrepare_UPDATE_0[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, ResponseToPrepare_UPDATE_0, sizeof(ResponseToPrepare_UPDATE_0));
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_0" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_0" << std::endl;
                                 break;
 
                             case (0x31):      //field_1_
                                 memcpy(&ResponseToPrepare_UPDATE_1[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, ResponseToPrepare_UPDATE_1, sizeof(ResponseToPrepare_UPDATE_1));
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_1" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_1" << std::endl;
                                 break;
 
                             case (0x32):      //field_2_
                                 memcpy(&ResponseToPrepare_UPDATE_2[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, ResponseToPrepare_UPDATE_2, sizeof(ResponseToPrepare_UPDATE_2));
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_2" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_2" << std::endl;
                                 break;
 
                             case (0x33):      //field_3_
                                 memcpy(&ResponseToPrepare_UPDATE_3[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, ResponseToPrepare_UPDATE_3, sizeof(ResponseToPrepare_UPDATE_3));
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_3" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_3" << std::endl;
                                 break;
 
                             case (0x34):      //field_4_
                                 memcpy(&ResponseToPrepare_UPDATE_4[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, ResponseToPrepare_UPDATE_4, sizeof(ResponseToPrepare_UPDATE_4));
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_4" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_4" << std::endl;
                                 break;
 
                             case (0x35):      //field_5_
                                 memcpy(&ResponseToPrepare_UPDATE_5[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, ResponseToPrepare_UPDATE_5, sizeof(ResponseToPrepare_UPDATE_5));
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_5" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_5" << std::endl;
                                 break;
 
                             case (0x36):      //field_6_
                                 memcpy(&ResponseToPrepare_UPDATE_6[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, ResponseToPrepare_UPDATE_6, sizeof(ResponseToPrepare_UPDATE_6));
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_6" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_6" << std::endl;
                                 break;
 
                             case (0x37):      //field_7_
                                 memcpy(&ResponseToPrepare_UPDATE_7[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, ResponseToPrepare_UPDATE_7, sizeof(ResponseToPrepare_UPDATE_7));
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_7" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_7" << std::endl;
                                 break;
 
                             case (0x38):      //field_8_
                                 memcpy(&ResponseToPrepare_UPDATE_8[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, ResponseToPrepare_UPDATE_8, sizeof(ResponseToPrepare_UPDATE_8));
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_8" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_8" << std::endl;
                                 break;
 
                             case (0x39):      //field_9_
                                 memcpy(&ResponseToPrepare_UPDATE_9[2], &s_Thr_PrepAndExec.head[2], 2);
                                 write(s_Thr_PrepAndExec.origin, ResponseToPrepare_UPDATE_9, sizeof(ResponseToPrepare_UPDATE_9));
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_9" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_9" << std::endl;
                                 break;
 
                             default:
-                                std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_ELSE" << std::endl;
+                                // std::cout << "WRITED _PREPARE_STATEMENT_UPDATE_ELSE" << std::endl;
+                                break;
                             }
+                            break;
 
                         default:
-                            std::cout << "WRITED _PREPARE_STATEMENT_ELSE" << std::endl;
+                            // std::cout << "WRITED _PREPARE_STATEMENT_ELSE" << std::endl;
+                            break;
                         }
                         //ENDADDED
                     }
                     else if (s_Thr_PrepAndExec.head[4] == _EXECUTE_STATEMENT) {
                         //ADDED
-                        if (s_Thr_PrepAndExec.head[8] == 0x3e || s_Thr_PrepAndExec.head[8] == 0x46 || s_Thr_PrepAndExec.head[8] == 0x66)      //SELECT
+                        //SELECT
+                        if (s_Thr_PrepAndExec.head[8] == 0x3e /**/ || s_Thr_PrepAndExec.head[8] == 0x3d || s_Thr_PrepAndExec.head[8] == 0x3c || s_Thr_PrepAndExec.head[8] == 0x3b || s_Thr_PrepAndExec.head[8] == 0x3a || s_Thr_PrepAndExec.head[8] == 0x39 /* || s_Thr_PrepAndExec.head[8] == 0x46 || s_Thr_PrepAndExec.head[8] == 0x66*/)
+                            // if(s_Thr_PrepAndExec.head[8] == 0x66 /**/ || s_Thr_PrepAndExec.head[8] == 0x65 || s_Thr_PrepAndExec.head[8] == 0x64)      
                         {
                             // std::cout << "EXECUTE_SELECT " << std::endl;
 
                             memcpy(&tableName[0], &s_Thr_PrepAndExec.CQLStatement[27], 24);
+                            // for(int i = 0; i < sizeof(tableName); i++)
+                                // printf("tableName[i]: 0x%x", tableName[i]);
                             for (tableNameSize = 0; tableNameSize < 24; tableNameSize++) {
-                                if (tableName[tableNameSize] == 0x00)
+                                if (tableName[tableNameSize] == 0x00 || tableName[tableNameSize] == 0xffffffff)
                                     break;
                             }
-                            // std::cout << "tableName: " << tableName << "| tableNameSize: " << tableNameSize << std::endl;
+                            // std::cout << "tableName:" << tableName << std::endl;
+                            // std::cout << "tableNameSize:" << tableNameSize << std::endl;
+
                             // paramValues_SELECT[0] = tableName;
 
                             //resCreateTable = PQexecParams(connPrepState, command_SELECT, 1, (const Oid*)NULL, paramValues_SELECT, NULL, NULL, 0);
                             memcpy(&select_req[14], &tableName, tableNameSize);
-                            // std::cout << select_req << std::endl;
                             resCreateTable = PQexec(connPrepState, select_req);
                             /*for(int i = 0; i < _RETRY_INSERTING; i++)
                             {
@@ -375,7 +383,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                             if (PQresultStatus(resCreateTable) == PGRES_TUPLES_OK)
                             {
                                 //Affichage des En-têtes
-                                nFields = PQnfields(resCreateTable);
+                                // nFields = PQnfields(resCreateTable);
                                 /*printf("\n\n");
                                 for (int i = 0; i < nFields; i++)
                                     printf("%-15s", PQfname(resCreateTable, i));
@@ -429,8 +437,8 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                                         cursor += 4;
                                     }
                                 }
-                                full_text[7] = /*(cursor - 89) / 256*/ 0x04;
-                                full_text[8] = /*cursor - 89*/ 0x3b;
+                                full_text[7] = (cursor - 9) / 256 /*0x04*/;
+                                full_text[8] = cursor - 9 /*0x3b*/;
 
                                 write(s_Thr_PrepAndExec.origin, full_text, cursor);
 
@@ -438,6 +446,8 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                             }
                             else
                             {
+                                std::cout << "select_req:" << select_req << std::endl;
+                                std::cout << "tableName:" << tableName << "| tableNameSize: " << tableNameSize << std::endl;
                                 fprintf(stderr, "SELECT statement failed: %s", PQerrorMessage(connPrepState));
                                 //logs("!!! ECHEC !!!", ERROR);
                                 PQclear(resCreateTable);
@@ -449,7 +459,8 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                             memset(full_text, 0x00, sizeof(full_text));
                         }
 
-                        else if (s_Thr_PrepAndExec.head[8] == 0xa6)    //UPDATE
+                        //UPDATE    
+                        else if (s_Thr_PrepAndExec.head[8] == 0xa6 || /**/ s_Thr_PrepAndExec.head[8] == 0xa5 || s_Thr_PrepAndExec.head[8] == 0xa4 || s_Thr_PrepAndExec.head[8] == 0xa3 || s_Thr_PrepAndExec.head[8] == 0xa2 || s_Thr_PrepAndExec.head[8] == 0xa1)
                         {
                             // std::cout << "EXECUTE_UPDATE " << std::endl;
 
@@ -535,13 +546,13 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                             }
                             PQclear(resCreateTable);*/
 
-                            memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
-                            write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
+                            // memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
+                            // write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
 
                             if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
                             {
-                                // memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
-                                // write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
+                                memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
+                                write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
 
                                 PQclear(resCreateTable);
                             }
@@ -556,7 +567,8 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                             memset(tableName, 0x00, sizeof(tableName));
                         }
 
-                        else if (s_Thr_PrepAndExec.head[7] == 0x04)      //INSERT
+                        //INSERT
+                        else if (s_Thr_PrepAndExec.head[7] == 0x04)
                         {
                             // std::cout << "EXECUTE_INSERT " << std::endl;
 
@@ -595,12 +607,14 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                                 }
                             }
                             PQclear(resCreateTable);*/
-                            memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
-                            write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
+                            // memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
+                            // write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
+
                             if (PQresultStatus(resCreateTable) == PGRES_COMMAND_OK)
                             {
-                                // memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
-                                // write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
+                                memcpy(&ResponseToExecute_INSERT[2], &s_Thr_PrepAndExec.head[2], 2);
+                                write(s_Thr_PrepAndExec.origin, &ResponseToExecute_INSERT, 13);
+
                                 PQclear(resCreateTable);
                             }
                             else
@@ -617,7 +631,8 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                         else
                         {
                             std::cout << "EXECUTE_ELSE" << std::endl;
-                            std::cout << "s_Thr_PrepAndExec.head[8]: " << s_Thr_PrepAndExec.head[8] << std::endl;
+                            printf("s_Thr_PrepAndExec.head[8]: 0x%x", s_Thr_PrepAndExec.head[8]);
+                            // std::cout << "s_Thr_PrepAndExec.head[8]: " << s_Thr_PrepAndExec.head[8] << std::endl;
                         }
                         //ENDADDED
                     }
@@ -639,7 +654,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
     }
 }
 
-// (NO PROCO - DOUBLE REQUEST)
+////// (NO PROCO - DOUBLE REQUEST)
 
 /*#include "c_PreparedStatements.hpp"
 #include "c_Socket.hpp"
