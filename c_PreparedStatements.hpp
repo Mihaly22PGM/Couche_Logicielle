@@ -17,15 +17,15 @@
 #include "c_Logs.hpp"
 
 struct PreparedReqStock {
-    char ID[16];
-    char order[10];
+    unsigned char ID[16];
+    unsigned char order[10];
 };
 struct PreparedStatAndResponse {
     PGresult* PGReq;
     std::string Response;
 };
 struct SQLPrepRequests {
-    char stream[2];
+    unsigned char stream[2];
     std::string request;
 };
 struct PrepAndExecReq {

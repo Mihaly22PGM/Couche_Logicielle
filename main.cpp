@@ -53,8 +53,9 @@ unsigned int sizeheader = 0;
 unsigned int sizeheader_REPL = 0;
 unsigned int server_count = 0;
 unsigned int master_count = 0;
-unsigned int datatransfert = 0;
+
 unsigned int datatransfert_REPL[_CONNEXIONS];
+int datatransfert = 0;
 
 ssize_t ServerSock = 0;
 
@@ -133,6 +134,7 @@ int main(int argc, char* argv[])
     server_count = l_servers.size();
     master_count = server_count;
     memset(&PrevTest[0], 0, sizeof(PrevTest));
+    // memset(&partialHeader, 0, sizeof(partialHeader));
 
     for (unsigned int i = 0; i < _CONNEXIONS; i++) {
         bl_partialRequest_REPL[i] = false;
@@ -264,18 +266,37 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
         if (ServerSock + datatransfert + sizeheader > _WARNING_BUFFER) {
             logs("Buffer quasi full!!", WARNING);
         }
-        if (partialHeader[4] == _EXECUTE_STATEMENT)
-            sizeheader = 9;
-        else if (partialHeader[4] == _PREPARE_STATEMENT)
-            sizeheader = 13;
-        else {
-            logs("Casseee", WARNING);
-            memcpy(&test[0], &buffofdata[0], ServerSock);
+        if (datatransfert > 0) {
+            if (partialHeader[4] == _EXECUTE_STATEMENT)
+                sizeheader = 9;
+            else if (partialHeader[4] == _PREPARE_STATEMENT)
+                sizeheader = 13;
+            else {
+                logs("Casseee", WARNING);
+                memcpy(&test[0], &buffofdata[0], ServerSock);
+            }
+            memcpy(&test[0], &partialHeader[0], sizeheader);
+            memcpy(&test[sizeheader], &partialRequest[0], datatransfert);
+            memcpy(&test[datatransfert + sizeheader], &buffofdata[0], ServerSock);
+            ServerSock += datatransfert + sizeheader;
         }
-        memcpy(&test[0], &partialHeader[0], sizeheader);
-        memcpy(&test[sizeheader], &partialRequest[0], datatransfert);
-        memcpy(&test[datatransfert + sizeheader], &buffofdata[0], ServerSock);
-        ServerSock += datatransfert + sizeheader;
+        else {
+            datatransfert = 9 + datatransfert;
+            std::cout << "datatransfert: " << datatransfert;
+            std::cout << " ServerSock: " << ServerSock << std::endl;
+            memcpy(&test[0], &partialHeader[0], 9);
+            for (int i = 0; i < 9; i++)
+                printf("test1: 0x%x ", test[i]);
+            memcpy(&test[datatransfert], &buffofdata[0], ServerSock);
+            for (int i = 0; i < 9; i++)
+                printf("test2: 0x%x ", test[i]);
+            ServerSock += datatransfert;
+            printf("\r\n");
+        }
+        // memcpy(&test[0], &partialHeader[0], sizeheader);
+        // memcpy(&test[sizeheader], &partialRequest[0], datatransfert);
+        // memcpy(&test[datatransfert+sizeheader], &buffofdata[0], ServerSock);
+        // ServerSock += datatransfert + sizeheader;
         bl_partialRequest = false;
     }
     else {
@@ -361,12 +382,15 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
                 datatransfert = s_Requests.size - (sommeSize - ServerSock);  //Size diff excluding header size
                 memset(partialRequest, 0, sizeof(partialRequest));
                 memset(partialHeader, 0, sizeof(partialHeader));
-                if (s_Requests.request[datatransfert + 1] != 0x0 || datatransfert > 2047) {
+                /*if(s_Requests.request[datatransfert+1] !=0x0 || datatransfert > 2047){
                     logs("Erreur ici?\r\n");
                     printf("Datatransfert %d\r\n", datatransfert);
-                    printf("char : %c\r\n", s_Requests.request[datatransfert + 1]);
-                }
-                memcpy(&partialRequest[0], &s_Requests.request[0], datatransfert);
+                    printf("char : %c\r\n", s_Requests.request[datatransfert+1]);
+                }*/
+                if (datatransfert == 0)
+                    logs("Oh ben zut alors", WARNING);
+                if (datatransfert > 0)
+                    memcpy(&partialRequest[0], &s_Requests.request[0], datatransfert);
                 memcpy(&partialHeader[0], &header[0], sizeof(partialHeader));
             }
         }//Fin de requête
