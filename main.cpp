@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
     }
     if (bl_WithSlave) {
         if (bl_SlaveMaster)
-            master_count = server_count - 1;        //master_count = server_count - 4;
+            master_count = server_count - 1;        //master_count = server_count - 4;      //SLAVE_NUMBER
     }
     else {
         if (bl_SlaveMaster)
@@ -175,16 +175,15 @@ int main(int argc, char* argv[])
     }
 
     if (bl_UseRedirection) {
-        if (bl_SlaveMaster) {
-            logs("main() : Starting Proxy...Replication mode selected");
-            CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);  //1 Thread creation
-            if (CheckThreadCreation != 0) {
-                logs("main() : Thread th_INITSocket_Redirection creation failed", ERROR);
-                exit_prog(EXIT_FAILURE);
-            }
-            else
-                logs("main() : Thread th_INITSocket_Redirection created");
+        logs("main() : Starting Proxy...Replication mode selected");
+        CheckThreadCreation += pthread_create(&th_INITSocket_Redirection, NULL, INITSocket_Redirection, NULL);  //1 Thread creation
+        if (CheckThreadCreation != 0) {
+            logs("main() : Thread th_INITSocket_Redirection creation failed", ERROR);
+            exit_prog(EXIT_FAILURE);
         }
+        else
+            logs("main() : Thread th_INITSocket_Redirection created");
+
         int a = 0;
         while (a != 1)
         {
@@ -207,13 +206,11 @@ int main(int argc, char* argv[])
             std::cout << std::endl;
         }
     }
-    if (bl_UseBench && bl_SlaveMaster) {
+    if (bl_UseBench) {
         for (int i = 0; i < _THREDS_EXEC_NUMBER; i++) {
             CheckThreadCreation += pthread_create(&th_PrepExec[i], NULL, ConnPGSQLPrepStatements, NULL);    //_THREDS_EXEC_NUMBER Threads creation
         }
     }
-    else if (!bl_SlaveMaster)
-        CheckThreadCreation += pthread_create(&th_PrepExec[1], NULL, ConnPGSQLPrepStatements, NULL);    //1 Thread creation
 
     //Starting threads for sockets
     if (bl_UseRedirection) {
@@ -408,7 +405,6 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
 #pragma region Utils
 
 void exit_prog(int codeEXIT) {
-
     logs("exit_prog() : Fin du programme...");
     exit(codeEXIT);
 }
@@ -598,7 +594,7 @@ void* INITSocket_Redirection(void* arg)
 #pragma region Preparation
 void server_identification()
 {
-    for (unsigned int i = 0; i < master_count; i++)
+    for (unsigned int i = 0; i < server_count; i++)
     {
         if (get_ip_from_actual_server() == l_servers[i].server_ip_address)
         {
@@ -736,18 +732,15 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
         //On détermine le serveur vers lequel rediriger
         if (range_id == server_A.server_id)     //MASTER 1
         {
-            server_to_redirect = server_B;      //SLAVE M1
-
-            /*else if((hashed_key % server_count) + master_count == server_D.server_id)
-                server_to_redirect = server_D;*/
+            server_to_redirect = server_B;      //SLAVE MASTER 1
         }
         /*else if (range_id == server_B.server_id)     //MASTER 2
         {
-            if((hashed_key % server_count) + master_count == server_E.server_id)
-                server_to_redirect = server_E;
-
-            else if((hashed_key % server_count) + master_count == server_F.server_id)
-                server_to_redirect = server_F;
+            server_to_redirect = server_E;      //SLAVE MASTER 2
+        }
+        else if (range_id == server_C.server_id)     //MASTER 3
+        {
+            server_to_redirect = server_F;      //SLAVE MASTER 3
         }*/
         else {
             logs("Noooon", ERROR);
@@ -773,13 +766,17 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
         range_id = hashed_key % master_count;
 
         //On détermine le serveur vers lequel rediriger
-        if (range_id == server_A.server_id)
+        if (range_id == server_A.server_id)     //MASTER 1
         {
             server_to_redirect = server_A;
         }
-        /*else if (range_id == server_B.server_id)
+        /*else if (range_id == server_B.server_id)     //MASTER 2
         {
             server_to_redirect = server_B;
+        }
+        else if (range_id == server_C.server_id)     //MASTER 3
+        {
+            server_to_redirect = server_C;
         }*/
         else {
             logs("Noooon", ERROR);
