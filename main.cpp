@@ -47,6 +47,8 @@ bool bl_partialRequest_REPL[_CONNEXIONS];
 bool bl_lastRequestFrame_REPL = false;
 
 int CheckThreadCreation = 0;
+int hashed_key = 0;
+int range_id = 0;
 unsigned int sommeSize = 0;
 unsigned int sommeSize_REPL = 0;
 unsigned int sizeheader = 0;
@@ -96,12 +98,12 @@ PrepAndExecReq s_PrepAndExec_ToSend_REPL;
 server actual_server;
 server server_to_redirect;
 //Server List
-server server_A = { "RWCS_vServer1", 0, "192.168.82.52" };
-server server_B = { "RWCS_vServer2", 1, "192.168.82.53" };
-//server server_C = { "RWCS_vServer3", 2, "192.168.82.59" };
-/*server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };
-server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };
-server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };*/
+server server_A = { "RWCS_vServer1", 0, "192.168.82.52" };      //MASTER
+server server_B = { "RWCS_vServer2", 1, "192.168.82.53" };      //SLAVE
+server server_C = { "RWCS_vServer3", 2, "192.168.82.53" };      //SLAVE 1-A
+server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };      //SLAVE 1-B
+server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };      //SLAVE 2-A
+server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };      //SLAVE 2-B
 
 std::vector<int> accepted_connections, connected_connections;
 
@@ -165,7 +167,7 @@ int main(int argc, char* argv[])
     }
     if (bl_WithSlave) {
         if (bl_SlaveMaster)
-            master_count = server_count - 1;
+            master_count = server_count - 1;        //master_count = server_count - 4;
     }
     else {
         if (bl_SlaveMaster)
@@ -723,36 +725,78 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
     }
 
     //On hash la clé extraite de la requête via la fonction string_Hashing()
-    int hashed_key = string_Hashing(str_table_name);
+    hashed_key = string_Hashing(str_table_name);
 
-    //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
-    int range_id = hashed_key % (server_count /*- 1*/);
+    //SELECT => redirection sur les slaves
+    if (bl_WithSlave && (_PrepAndExecReq.head[8] == 0x3e || _PrepAndExecReq.head[8] == 0x3d || _PrepAndExecReq.head[8] == 0x3c || _PrepAndExecReq.head[8] == 0x3b || _PrepAndExecReq.head[8] == 0x3a || _PrepAndExecReq.head[8] == 0x39 || _PrepAndExecReq.head[8] == 0x38))
+    {
+        //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
+        range_id = hashed_key % master_count;
 
-    //On détermine le serveur vers lequel rediriger
-    if (range_id == server_A.server_id)
-    {
-        server_to_redirect = server_A;
-    }
-    else if (range_id == server_B.server_id)
-    {
-        server_to_redirect = server_B;
-    }
-    else {
-        logs("Noooon", ERROR);
-    }
+        //On détermine le serveur vers lequel rediriger
+        if (range_id == server_A.server_id)     //MASTER 1
+        {
+            server_to_redirect = server_B;      //SLAVE M1
 
-    if (server_to_redirect.server_id != actual_server.server_id)
-    {
-        //Redirection
-        if (server_to_redirect.server_id > actual_server.server_id)
-            send_to_server(connected_connections[server_to_redirect.server_id - 1], _PrepAndExecReq.head, _PrepAndExecReq.CQLStatement);
+            /*else if((hashed_key % server_count) + master_count == server_D.server_id)
+                server_to_redirect = server_D;*/
+        }
+        /*else if (range_id == server_B.server_id)     //MASTER 2
+        {
+            if((hashed_key % server_count) + master_count == server_E.server_id)
+                server_to_redirect = server_E;
+
+            else if((hashed_key % server_count) + master_count == server_F.server_id)
+                server_to_redirect = server_F;
+        }*/
+        else {
+            logs("Noooon", ERROR);
+        }
+
+        if (server_to_redirect.server_id != actual_server.server_id)
+        {
+            //Redirection
+            std::cout << "Redirection vers slave " << server_to_redirect.server_name << std::endl;
+            if (server_to_redirect.server_id > actual_server.server_id)
+                send_to_server(connected_connections[server_to_redirect.server_id - 1], _PrepAndExecReq.head, _PrepAndExecReq.CQLStatement);
+            else
+                send_to_server(connected_connections[server_to_redirect.server_id], _PrepAndExecReq.head, _PrepAndExecReq.CQLStatement);
+        }
         else
-            send_to_server(connected_connections[server_to_redirect.server_id], _PrepAndExecReq.head, _PrepAndExecReq.CQLStatement);
+        {
+            AddToQueue(_PrepAndExecReq);
+        }
     }
     else
     {
-        AddToQueue(_PrepAndExecReq);
-    }
+        //On effectue le modulo du hash (int) de la clé par le nombre de serveurs pour savoir vers lequel rediriger
+        range_id = hashed_key % master_count;
 
+        //On détermine le serveur vers lequel rediriger
+        if (range_id == server_A.server_id)
+        {
+            server_to_redirect = server_A;
+        }
+        /*else if (range_id == server_B.server_id)
+        {
+            server_to_redirect = server_B;
+        }*/
+        else {
+            logs("Noooon", ERROR);
+        }
+
+        if (server_to_redirect.server_id != actual_server.server_id)
+        {
+            //Redirection
+            if (server_to_redirect.server_id > actual_server.server_id)
+                send_to_server(connected_connections[server_to_redirect.server_id - 1], _PrepAndExecReq.head, _PrepAndExecReq.CQLStatement);
+            else
+                send_to_server(connected_connections[server_to_redirect.server_id], _PrepAndExecReq.head, _PrepAndExecReq.CQLStatement);
+        }
+        else
+        {
+            AddToQueue(_PrepAndExecReq);
+        }
+    }
 }
 #pragma endregion Redirecting

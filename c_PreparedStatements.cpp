@@ -522,7 +522,7 @@ void PrepExecStatement(PGconn* connPrepState, void* arg) {
                         }
 
                         //INSERT
-                        else if (s_Thr_PrepAndExec.head[7] == 0x04)
+                        else if (s_Thr_PrepAndExec.head[7] == 0x04 || s_Thr_PrepAndExec.head[8] == 0x66 || s_Thr_PrepAndExec.head[8] == 0x65 || s_Thr_PrepAndExec.head[8] == 0x64 || s_Thr_PrepAndExec.head[8] == 0x63 || s_Thr_PrepAndExec.head[8] == 0x62)
                         {
                             memcpy(&tableName[0], &s_Thr_PrepAndExec.CQLStatement[27], 24);
                             for (tableNameSize = 0; tableNameSize < 24; tableNameSize++) {
