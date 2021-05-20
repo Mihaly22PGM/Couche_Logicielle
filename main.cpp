@@ -14,7 +14,7 @@ typedef int SOCKET;
 #define _EXECUTE_STATEMENT 0x0a
 #define _THREDS_EXEC_NUMBER 6
 #define _REDIRECTING_PORT 8042
-#define _CONNEXIONS 10
+#define _CONNEXIONS 7
 #define _WARNING_BUFFER 100000
 
 #pragma region Structures
@@ -38,7 +38,6 @@ bool bl_UseRedirection = false;
 bool bl_UseBench = false;
 bool bl_Load = false;
 bool bl_Error_Args = false;
-bool bl_loop = true;
 bool bl_SlaveMaster = false;
 bool bl_WithSlave = false;
 bool bl_partialRequest = false;
@@ -58,7 +57,6 @@ unsigned int master_count = 0;
 
 unsigned int datatransfert_REPL[_CONNEXIONS];
 int datatransfert = 0;
-
 ssize_t ServerSock = 0;
 
 unsigned char buffData[131072];
@@ -98,17 +96,17 @@ PrepAndExecReq s_PrepAndExec_ToSend_REPL;
 server actual_server;
 server server_to_redirect;
 //Server List
-server server_A = { "RWCS_vServer1", 0, "192.168.82.52" };      //MASTER
-server server_B = { "RWCS_vServer2", 1, "192.168.82.53" };      //SLAVE
-server server_C = { "RWCS_vServer3", 2, "192.168.82.53" };      //SLAVE 1-A
-server server_D = { "RWCS_vServer4", 3, "192.168.82.56" };      //SLAVE 1-B
-server server_E = { "RWCS_vServer5", 4, "192.168.82.58" };      //SLAVE 2-A
-server server_F = { "RWCS_vServer6", 5, "192.168.82.59" };      //SLAVE 2-B
+server server_A = { "RWCS_vServer1", 0, "192.168.82.52" };      //MASTER 1
+server server_B = { "RWCS_vServer2", 1, "192.168.82.55" };      //MASTER 2
+server server_C = { "RWCS_vServer3", 2, "192.168.82.58" };      //MASTER 3
+server server_D = { "RWCS_vServer4", 3, "192.168.82.59" };      //SLAVE 1
+server server_E = { "RWCS_vServer5", 4, "192.168.82.53" };      //SLAVE 2
+server server_F = { "RWCS_vServer6", 5, "192.168.82.56" };      //SLAVE 3
 
 std::vector<int> accepted_connections, connected_connections;
 
 //Important de respecter l'ordre des id quand on déclare les sevreurs dans la liste pour que ça coincide avec la position dans la liste (METTRE LES MASTERS AU DEBUT)
-std::vector<server> l_servers = { server_A, server_B/*, server_C, server_D, server_E, server_F */ };
+std::vector<server> l_servers = { server_A, server_B, server_C, server_D, server_E, server_F };
 
 #pragma endregion Global
 
@@ -136,11 +134,12 @@ int main(int argc, char* argv[])
     server_count = l_servers.size();
     master_count = server_count;
     memset(&PrevTest[0], 0, sizeof(PrevTest));
-    // memset(&partialHeader, 0, sizeof(partialHeader));
+    memset(&partialHeader, 0, sizeof(partialHeader));
 
     for (unsigned int i = 0; i < _CONNEXIONS; i++) {
         bl_partialRequest_REPL[i] = false;
         datatransfert_REPL[i] = 0;
+        memset(&partialHeader_REPL[i], 0, sizeof(partialHeader_REPL[i]));
     }
     bl_Load = true;     //Load mode forced
     bl_UseBench = true; //bench mode forced
@@ -167,7 +166,7 @@ int main(int argc, char* argv[])
     }
     if (bl_WithSlave) {
         if (bl_SlaveMaster)
-            master_count = server_count - 1;        //master_count = server_count - 4;      //SLAVE_NUMBER
+            master_count = server_count - 3;      //SLAVE_NUMBER
     }
     else {
         if (bl_SlaveMaster)
@@ -230,18 +229,25 @@ int main(int argc, char* argv[])
     sockDataClient = INITSocket(sockServer, bl_UseBench);
 
     logs("main() : Starting Done");
-    while (bl_loop) {
-        ServerSock = 0;
-        ServerSock = recv(sockDataClient, &buffData[0], sizeof(buffData), 0);
-        if (ServerSock > 0) {
-            if (ServerSock > _WARNING_BUFFER) {
-                logs("Buffer full! Ou presque!", WARNING);
-                printf("Check if not too much data : 0x%x 0x%x 0x%x 0x%x", buffData[131068], buffData[131069], buffData[131070], buffData[131071]);
+    try {
+        while (1) {
+            ServerSock = 0;
+            ServerSock = recv(sockDataClient, &buffData[0], sizeof(buffData), 0);
+            if (ServerSock > 0) {
+                if (ServerSock > _WARNING_BUFFER) {
+                    logs("Buffer full! Ou presque!", WARNING);
+                    printf("Check if not too much data : 0x%x 0x%x 0x%x 0x%x", buffData[131068], buffData[131069], buffData[131070], buffData[131071]);
+                }
+                TraitementFrameData(buffData);
+                memset(buffData, 0, sizeof(buffData));
             }
-            TraitementFrameData(buffData);
-            memset(buffData, 0, sizeof(buffData));
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
         }
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
+    }
+    catch (...)
+    {
+        logs("Connexion client fermée", WARNING);
+        while (1) {};
     }
     printf("Fermeture du programme...\r\n");
     Ending();
@@ -281,21 +287,17 @@ void TraitementFrameData(unsigned char buffofdata[131072]) {
         }
         else {
             datatransfert = 9 + datatransfert;
-            std::cout << "datatransfert: " << datatransfert;
-            std::cout << " ServerSock: " << ServerSock << std::endl;
+            //std::cout << "datatransfert: " << datatransfert;
+            //std::cout << " ServerSock: " << ServerSock << std::endl;
             memcpy(&test[0], &partialHeader[0], 9);
-            for (int i = 0; i < 9; i++)
-                printf("test1: 0x%x ", test[i]);
+            // for (int i = 0; i < 9; i++)
+            //     printf("test1: 0x%x ", test[i]);
             memcpy(&test[datatransfert], &buffofdata[0], ServerSock);
-            for (int i = 0; i < 9; i++)
-                printf("test2: 0x%x ", test[i]);
+            // for (int i = 0; i < 9; i++)
+            //     printf("test2: 0x%x ", test[i]);
             ServerSock += datatransfert;
-            printf("\r\n");
+            // printf("\r\n");
         }
-        // memcpy(&test[0], &partialHeader[0], sizeheader);
-        // memcpy(&test[sizeheader], &partialRequest[0], datatransfert);
-        // memcpy(&test[datatransfert+sizeheader], &buffofdata[0], ServerSock);
-        // ServerSock += datatransfert + sizeheader;
         bl_partialRequest = false;
     }
     else {
@@ -460,7 +462,7 @@ void* INITSocket_Redirection(void* arg)
     std::cout << "Connexion a tous les serveurs acceptees!" << std::endl;
     logs("Connexion des serveurs effectuée");
     ssize_t ByteSize_REPL = 0;
-    while (bl_loop)
+    while (1)
     {
         std::this_thread::sleep_for(std::chrono::microseconds(1));
         for (unsigned int zz = 0; zz < accepted_connections.size(); zz++)   //foreach connexion
@@ -476,21 +478,55 @@ void* INITSocket_Redirection(void* arg)
                 memset(&header_REPL[0], 0, sizeof(header_REPL));
                 sommeSize_REPL = 0;
                 bl_lastRequestFrame_REPL = false;
+
+
                 if (bl_partialRequest_REPL[zz]) {
-                    if (partialHeader_REPL[zz][4] == _EXECUTE_STATEMENT)
-                        sizeheader_REPL = 9;
-                    else if (partialHeader_REPL[zz][4] == _PREPARE_STATEMENT)
-                        sizeheader_REPL = 13;
-                    else {
-                        logs("Ouch", WARNING);
-                        memcpy(&test_REPL[0], &buffer[zz][0], ByteSize_REPL);
+                    if (datatransfert_REPL[zz] > 0) {
+                        if (partialHeader_REPL[zz][4] == _EXECUTE_STATEMENT)
+                            sizeheader_REPL = 9;
+                        else if (partialHeader_REPL[zz][4] == _PREPARE_STATEMENT)
+                            sizeheader_REPL = 13;
+                        else {
+                            logs("Ouch", WARNING);
+                            memcpy(&test_REPL[0], &buffer[zz][0], ByteSize_REPL);
+                        }
+                        memcpy(&test_REPL[0], &partialHeader_REPL[zz][0], sizeheader_REPL);
+                        memcpy(&test_REPL[sizeheader_REPL], &partialRequest_REPL[zz][0], datatransfert_REPL[zz]);
+                        memcpy(&test_REPL[datatransfert_REPL[zz] + sizeheader_REPL], &buffer[zz][0], ByteSize_REPL);
+                        ByteSize_REPL += datatransfert_REPL[zz] + sizeheader_REPL;
                     }
-                    memcpy(&test_REPL[0], &partialHeader_REPL[zz][0], sizeheader_REPL);
-                    memcpy(&test_REPL[sizeheader_REPL], &partialRequest_REPL[zz][0], datatransfert_REPL[zz]);
-                    memcpy(&test_REPL[datatransfert_REPL[zz] + sizeheader_REPL], &buffer[zz][0], ByteSize_REPL);
-                    ByteSize_REPL += datatransfert_REPL[zz] + sizeheader_REPL;
+                    else {
+                        datatransfert_REPL[zz] = 9 + datatransfert_REPL[zz];
+                        //std::cout << "datatransfert: " << datatransfert;
+                        //std::cout << " ServerSock: " << ServerSock << std::endl;
+                        memcpy(&test_REPL[0], &partialHeader_REPL[zz][0], 9);
+                        // for (int i = 0; i < 9; i++)
+                        //     printf("test1: 0x%x ", test[i]);
+                        memcpy(&test_REPL[datatransfert_REPL[zz]], &buffer[zz][0], ByteSize_REPL);
+                        // for (int i = 0; i < 9; i++)
+                        //     printf("test2: 0x%x ", test[i]);
+                        ByteSize_REPL += datatransfert_REPL[zz];
+                        // printf("\r\n");
+                    }
                     bl_partialRequest_REPL[zz] = false;
                 }
+
+
+                // if (bl_partialRequest_REPL[zz]) {
+                //     if (partialHeader_REPL[zz][4] == _EXECUTE_STATEMENT)
+                //         sizeheader_REPL = 9;
+                //     else if (partialHeader_REPL[zz][4] == _PREPARE_STATEMENT)
+                //         sizeheader_REPL = 13;
+                //     else {
+                //         logs("Ouch", WARNING);
+                //         memcpy(&test_REPL[0], &buffer[zz][0], ByteSize_REPL);
+                //     }
+                //     memcpy(&test_REPL[0], &partialHeader_REPL[zz][0], sizeheader_REPL);
+                //     memcpy(&test_REPL[sizeheader_REPL], &partialRequest_REPL[zz][0], datatransfert_REPL[zz]);
+                //     memcpy(&test_REPL[datatransfert_REPL[zz] + sizeheader_REPL], &buffer[zz][0], ByteSize_REPL);
+                //     ByteSize_REPL += datatransfert_REPL[zz] + sizeheader_REPL;
+                //     bl_partialRequest_REPL[zz] = false;
+                // }
                 else {
                     memcpy(&test_REPL[0], &buffer[zz][0], ByteSize_REPL);
                 }
@@ -567,15 +603,12 @@ void* INITSocket_Redirection(void* arg)
                     }
                     else {
                         datatransfert_REPL[zz] = s_Requests_REPL.size - (sommeSize_REPL - ByteSize_REPL);  //Size diff excluding header size
-                        memset(partialRequest_REPL, 0, sizeof(partialRequest_REPL));
-                        memset(partialHeader_REPL[zz], 0, sizeof(partialHeader_REPL[zz]));
-                        if (s_Requests_REPL.request[datatransfert_REPL[zz] + 1] != 0x0 || datatransfert_REPL[zz] > 2047) {
-                            logs("Erreur in datatransfert_REPL?", WARNING);
-                            logs("Erreur ici?\r\n");
-                            printf("Datatransfert %d\r\n", datatransfert_REPL[zz]);
-                            printf("char : %c\r\n", s_Requests_REPL.request[datatransfert_REPL[zz] + 1]);
-                        }
-                        memcpy(&partialRequest_REPL[0], &s_Requests_REPL.request[0], datatransfert_REPL[zz]);
+                        memset(&partialRequest_REPL[zz][0], 0, sizeof(partialRequest_REPL[zz]));
+                        memset(&partialHeader_REPL[zz][0], 0, sizeof(partialHeader_REPL[zz]));
+                        if (datatransfert_REPL[zz] == 0)
+                            logs("Oh ben zut alors (RED)", WARNING);
+                        if (datatransfert_REPL[zz] > 0)
+                            memcpy(&partialRequest_REPL[zz][0], &s_Requests_REPL.request[0], datatransfert_REPL[zz]);
                         memcpy(&partialHeader_REPL[zz][0], &header_REPL[0], sizeof(partialHeader_REPL[zz]));
                     }//Fin de requête
 
@@ -732,16 +765,16 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
         //On détermine le serveur vers lequel rediriger
         if (range_id == server_A.server_id)     //MASTER 1
         {
-            server_to_redirect = server_B;      //SLAVE MASTER 1
+            server_to_redirect = server_D;      //SLAVE MASTER 1
         }
-        /*else if (range_id == server_B.server_id)     //MASTER 2
+        else if (range_id == server_B.server_id)     //MASTER 2
         {
             server_to_redirect = server_E;      //SLAVE MASTER 2
         }
         else if (range_id == server_C.server_id)     //MASTER 3
         {
             server_to_redirect = server_F;      //SLAVE MASTER 3
-        }*/
+        }
         else {
             logs("Noooon", ERROR);
         }
@@ -770,14 +803,14 @@ void BENCH_redirecting(PrepAndExecReq _PrepAndExecReq)
         {
             server_to_redirect = server_A;
         }
-        /*else if (range_id == server_B.server_id)     //MASTER 2
+        else if (range_id == server_B.server_id)     //MASTER 2
         {
             server_to_redirect = server_B;
         }
         else if (range_id == server_C.server_id)     //MASTER 3
         {
             server_to_redirect = server_C;
-        }*/
+        }
         else {
             logs("Noooon", ERROR);
         }
